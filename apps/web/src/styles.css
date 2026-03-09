@@ -95,4 +95,20 @@
   .micro-pill {
     @apply inline-flex items-center rounded-full border border-stone-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-600;
   }
+
+  .brand-lockup {
+    @apply inline-flex items-center gap-3 rounded-[24px] border border-white/80 bg-white/70 px-3 py-2.5 no-underline transition-colors hover:bg-white/90 hover:text-stone-950;
+  }
+
+  .brand-mark-shell {
+    @apply flex h-12 w-12 items-center justify-center rounded-[20px] border border-cyan-200 bg-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)];
+  }
+
+  .nav-link {
+    @apply inline-flex items-center rounded-full border border-stone-200/80 bg-white/75 px-4 py-2 text-sm font-semibold text-stone-600 no-underline transition-colors hover:border-stone-300 hover:bg-white hover:text-stone-950;
+  }
+
+  .nav-link-active {
+    @apply border-cyan-200 bg-cyan-50 text-cyan-800 shadow-[0_18px_40px_-28px_rgba(8,145,178,0.65)];
+  }
 }
