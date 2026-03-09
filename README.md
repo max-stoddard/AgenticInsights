@@ -49,7 +49,7 @@ If a session has no usable `total_token_usage` rows at all, the backend can stil
 
 ### 2. Tokens are converted into a cost-equivalent proxy
 
-The UI does not show USD, but the app uses official OpenAI model pricing as a stable weighting proxy for relative inference intensity.
+The UI does not show USD, but the app uses official OpenAI model pricing as a stable weighting proxy for relative inference intensity [3-8].
 
 For each supported event:
 
@@ -70,15 +70,6 @@ Supported pricing table used in this app:
 | `gpt-5.3-codex` | `$1.75` | `$0.175` | `$14.00` |
 | `gpt-5.4` | `$2.50` | `$0.25` | `$15.00` |
 
-Source URLs:
-
-- `https://developers.openai.com/api/docs/models/gpt-5.1-codex-mini`
-- `https://developers.openai.com/api/docs/models/gpt-5.1-codex-max`
-- `https://developers.openai.com/api/docs/models/gpt-5.2-codex`
-- `https://developers.openai.com/api/docs/models/gpt-5.3-codex`
-- `https://developers.openai.com/api/docs/models/gpt-5.4`
-- `https://openai.com/api/pricing/`
-
 ### 3. The app calibrates against your own local usage history
 
 Absolute litres per token are not observable from Codex logs.
@@ -97,21 +88,23 @@ This makes the dashboard stable across refreshes while still being anchored to t
 
 ### 4. The app converts the weighted proxy into water
 
-The app uses three fixed benchmark coefficients:
+The app uses three benchmark coefficients taken from Li, Yang, Islam, and Ren's "Making AI Less 'Thirsty'" benchmark discussion [1,2].
 
-- Low: `0.010619 L`
-- Central: `0.016904 L`
-- High: `0.029915 L`
+These values come from the paper's "total water for each request" benchmarks for a GPT-3 medium-sized request with `10` input tokens and `50` output tokens:
+
+- Low: `0.010585 L` from Georgia
+- Central: `0.016904 L` from the U.S. average
+- High: `0.029926 L` from Arizona
 
 For each supported event:
 
 ```text
-lowLitres = eventCostUsd / referenceEventCostUsd * 0.010619
+lowLitres = eventCostUsd / referenceEventCostUsd * 0.010585
 centralLitres = eventCostUsd / referenceEventCostUsd * 0.016904
-highLitres = eventCostUsd / referenceEventCostUsd * 0.029915
+highLitres = eventCostUsd / referenceEventCostUsd * 0.029926
 ```
 
-These coefficients are a product-level assumption layer. They are intended to represent a conservative, central, and high benchmark for one reference query-sized event once pricing-weighted usage has been normalized by your local median event.
+In this app, those literature values act as low, central, and high benchmark anchors after pricing-weighted usage has been normalized by your local median event.
 
 They are not a physical measurement from your machine.
 
@@ -134,13 +127,7 @@ The main uncertainty comes from three places:
 
 - OpenAI price ratios are being used as a compute-intensity proxy, not as billed spend shown to the user
 - The local median calibration step is a normalization choice, not a physical measurement
-- The low/central/high benchmark coefficients are fixed assumptions chosen for this app
-
-The CACM coverage of Shaolei Ren's water-footprint work is the main public benchmark context for the broader question of AI water consumption:
-
-- `https://cacm.acm.org/news/making-ai-less-thirsty/`
-
-Sam Altman has also publicly described materially lower per-query water usage in public commentary. This dashboard does not use that lower claim as its primary coefficient set because it is not a model-specific pricing-weighted method and does not line up with the fixed benchmark assumptions used here.
+- The low/central/high benchmark coefficients are literature benchmarks taken from a GPT-3 request scenario and then reused as anchors for Codex events after local normalization [1,2]
 
 ## API
 
@@ -157,3 +144,21 @@ npm run lint
 npm run test
 npm run build
 ```
+
+## References
+
+[1] Li P, Yang J, Islam MA, Ren S. Making AI Less "Thirsty". Commun ACM. 2025;68(7):54-61. doi:10.1145/3724499
+
+[2] Li P, Yang J, Islam MA, Ren S. Making AI Less "Thirsty": Uncovering and Addressing the Secret Water Footprint of AI Models [Internet]. arXiv:2304.03271; 2023 [cited 2026 Mar 9]. Available from: https://arxiv.org/abs/2304.03271
+
+[3] OpenAI. Pricing [Internet]. 2026 [cited 2026 Mar 9]. Available from: https://openai.com/api/pricing/
+
+[4] OpenAI. GPT-5.1-Codex Mini model [Internet]. 2026 [cited 2026 Mar 9]. Available from: https://developers.openai.com/api/docs/models/gpt-5.1-codex-mini
+
+[5] OpenAI. GPT-5.1-Codex Max model [Internet]. 2026 [cited 2026 Mar 9]. Available from: https://developers.openai.com/api/docs/models/gpt-5.1-codex-max
+
+[6] OpenAI. GPT-5.2-Codex model [Internet]. 2026 [cited 2026 Mar 9]. Available from: https://developers.openai.com/api/docs/models/gpt-5.2-codex
+
+[7] OpenAI. GPT-5.3-Codex model [Internet]. 2026 [cited 2026 Mar 9]. Available from: https://developers.openai.com/api/docs/models/gpt-5.3-codex
+
+[8] OpenAI. GPT-5.4 model [Internet]. 2026 [cited 2026 Mar 9]. Available from: https://developers.openai.com/api/docs/models/gpt-5.4
