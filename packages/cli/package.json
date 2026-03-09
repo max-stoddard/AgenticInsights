@@ -6,11 +6,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/max-stoddard/AIWaterUsage.git"
+    "url": "git+https://github.com/max-stoddard/AgenticInsights.git"
   },
-  "homepage": "https://github.com/max-stoddard/AIWaterUsage#readme",
+  "homepage": "https://github.com/max-stoddard/AgenticInsights#readme",
   "bugs": {
-    "url": "https://github.com/max-stoddard/AIWaterUsage/issues"
+    "url": "https://github.com/max-stoddard/AgenticInsights/issues"
   },
   "bin": {
     "ai-water-usage": "./dist/index.js"
