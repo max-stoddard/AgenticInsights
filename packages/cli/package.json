@@ -1,7 +1,17 @@
 {
   "name": "ai-water-usage",
   "version": "0.1.0",
+  "description": "Launch a local dashboard that estimates the water impact of Codex usage",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/max-stoddard/AIWaterUsage.git"
+  },
+  "homepage": "https://github.com/max-stoddard/AIWaterUsage#readme",
+  "bugs": {
+    "url": "https://github.com/max-stoddard/AIWaterUsage/issues"
+  },
   "bin": {
     "ai-water-usage": "./dist/index.js"
   },
@@ -10,6 +20,9 @@
   ],
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node ./scripts/prepare-runtime.mjs",
