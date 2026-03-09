@@ -9,3 +9,4 @@
   - Ensure commits are small changes, not big commits.
 - All changes must align with this repo being an `npx` package accessible via `npx ai-water-usage`
   - You must ensure Windows/Linux/MacOS compatibility
+- Root level `README.md` is developer facing on GitHub, keep this in mind when editing it.
