@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
 
     steps:
       - name: Check out repository
@@ -19,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
 
@@ -50,9 +51,7 @@ jobs:
         run: npm run test:pack
 
       - name: Publish package
-        run: npm publish -w ai-water-usage --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish -w agentic-insights --access public --provenance
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
