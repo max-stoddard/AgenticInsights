@@ -26,6 +26,11 @@ function mockDashboardResponses() {
             excludedEvents: 1,
             tokenOnlyEvents: 1
           },
+          diagnostics: {
+            state: "ready",
+            codexHome: "/tmp/.codex",
+            message: null
+          },
           exclusions: [
             {
               provider: "ollama",
@@ -169,12 +174,13 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getAllByText("1.20 L").length).toBeGreaterThan(0);
     });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
     expect(screen.queryByLabelText("Loading dashboard")).not.toBeInTheDocument();
-    expect(screen.getByText(/50 tokens excluded because unsupported provider/i)).toBeInTheDocument();
     expect(screen.getByText(/Supported token flow converted into a water estimate/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /CACM DOI: Making AI Less 'Thirsty' \(Li, Yang, Islam, Ren\)/i })
-    ).toHaveAttribute("href", "https://doi.org/10.1145/3724499");
+    expect(screen.queryByText(/How tokens become water/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /View exclusions and pricing/i })).toBeInTheDocument();
 
     const dayTab = screen.getByRole("tab", { name: "Day" });
     dayTab.focus();
@@ -200,19 +206,27 @@ describe("App", () => {
 
     fireEvent.click(within(primaryNav).getByRole("link", { name: "Usage over time" }));
     expect(await screen.findByRole("heading", { name: /Dedicated timeline view coming soon/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(9);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
 
     fireEvent.click(within(primaryNav).getByRole("link", { name: "Prompts" }));
     expect(await screen.findByRole("heading", { name: /Prompt-level water analysis coming soon/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(9);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
 
     fireEvent.click(within(primaryNav).getByRole("link", { name: "Methodology" }));
-    expect(await screen.findByRole("heading", { name: /Dedicated methodology page coming soon/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(9);
+    expect(await screen.findByRole("heading", { name: /Pricing-weighted water estimation from local Codex logs/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /How tokens become water/i })).toBeInTheDocument();
+    expect(screen.getByText(/50 tokens excluded because unsupported provider/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /CACM DOI: Making AI Less 'Thirsty' \(Li, Yang, Islam, Ren\)/i })
+    ).toHaveAttribute("href", "https://doi.org/10.1145/3724499");
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/methodology");
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
 
     fireEvent.click(within(primaryNav).getByRole("link", { name: "Home" }));
     expect(await screen.findByRole("heading", { name: /Water usage estimate from your Codex history/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(9);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it("does not fetch dashboard data until the home view is active", async () => {
@@ -229,7 +243,100 @@ describe("App", () => {
 
     await screen.findByLabelText("Loading dashboard");
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("shows explicit onboarding guidance when no local Codex history is available", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.startsWith("/api/overview")) {
+        return new Response(
+          JSON.stringify({
+            tokenTotals: {
+              totalTokens: 0,
+              supportedTokens: 0,
+              excludedTokens: 0,
+              unestimatedTokens: 0
+            },
+            waterLitres: {
+              low: 0,
+              central: 0,
+              high: 0
+            },
+            coverage: {
+              supportedEvents: 0,
+              excludedEvents: 0,
+              tokenOnlyEvents: 0
+            },
+            diagnostics: {
+              state: "no_data",
+              codexHome: "/home/dev/.codex",
+              message: "No Codex usage files were found in this directory yet."
+            },
+            exclusions: [],
+            lastIndexedAt: null,
+            calibration: null
+          }),
+          { status: 200 }
+        );
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App />);
+
+    expect((await screen.findAllByText(/No Codex history detected/i)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Run Codex once, then refresh this dashboard/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/ai-water-usage --codex-home \/path\/to\/\.codex/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("/home/dev/.codex").length).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a clear read error when the configured Codex home cannot be read", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.startsWith("/api/overview")) {
+        return new Response(
+          JSON.stringify({
+            tokenTotals: {
+              totalTokens: 0,
+              supportedTokens: 0,
+              excludedTokens: 0,
+              unestimatedTokens: 0
+            },
+            waterLitres: {
+              low: 0,
+              central: 0,
+              high: 0
+            },
+            coverage: {
+              supportedEvents: 0,
+              excludedEvents: 0,
+              tokenOnlyEvents: 0
+            },
+            diagnostics: {
+              state: "read_error",
+              codexHome: "/bad/path/.codex",
+              message: "Configured Codex home does not exist."
+            },
+            exclusions: [],
+            lastIndexedAt: null,
+            calibration: null
+          }),
+          { status: 200 }
+        );
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App />);
+
+    expect((await screen.findAllByText(/Could not read local Codex data/i)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Point the launcher at a readable Codex home/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Configured Codex home does not exist.").length).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,32 +1,31 @@
-import { Callout } from "@tremor/react";
-import { startTransition, useEffect, useState } from "react";
-import type { Bucket, MethodologyResponse, OverviewResponse, TimeseriesResponse } from "@ai-water-usage/shared";
-import { fetchMethodology, fetchOverview, fetchTimeseries } from "../api";
+import type { Bucket, OverviewResponse, TimeseriesResponse } from "@ai-water-usage/shared";
+import { AlertBanner } from "../components/AlertBanner";
 import { BucketToggle } from "../components/BucketToggle";
-import { CoverageNotice } from "../components/CoverageNotice";
-import { MethodologyPanel } from "../components/MethodologyPanel";
+import { CoverageSummary } from "../components/CoverageSummary";
 import { MetricCard } from "../components/MetricCard";
+import { SkeletonBlock } from "../components/SkeletonBlock";
 import { WaterChart } from "../components/WaterChart";
 import { formatDateTime, formatLitres, formatNumber } from "../lib/format";
 
-function useTimeZone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-}
-
-function SkeletonBlock({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-[24px] border border-stone-200 bg-white/80 ${className}`} />;
+interface HomeViewProps {
+  bucket: Bucket;
+  error: string | null;
+  loading: boolean;
+  overview: OverviewResponse | null;
+  timeseries: TimeseriesResponse | null;
+  timeZone: string;
+  onBucketChange: (bucket: Bucket) => void;
+  onOpenMethodology: () => void;
 }
 
 function HeroSnapshot({
-  loading,
   overview,
   timeZone
 }: {
-  loading: boolean;
   overview: OverviewResponse | null;
   timeZone: string;
 }) {
-  if (loading || !overview) {
+  if (!overview) {
     return (
       <div className="panel-muted p-5 sm:p-6">
         <div className="space-y-3">
@@ -37,6 +36,35 @@ function HeroSnapshot({
           <SkeletonBlock className="h-12 w-full" />
           <SkeletonBlock className="h-12 w-full" />
           <SkeletonBlock className="h-12 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (overview.diagnostics.state !== "ready") {
+    const title =
+      overview.diagnostics.state === "no_data" ? "No Codex history detected" : "Could not read local Codex data";
+    const copy =
+      overview.diagnostics.state === "no_data"
+        ? "The launcher is running locally, but there is no readable Codex token history at the checked path yet."
+        : overview.diagnostics.message ?? "The launcher could not read the configured Codex directory.";
+
+    return (
+      <div className="panel-muted p-5 sm:p-6">
+        <p className="section-kicker">Launcher status</p>
+        <div className="mt-3 space-y-3">
+          <p className="text-2xl font-semibold tracking-[-0.05em] text-stone-950">{title}</p>
+          <p className="text-sm leading-6 text-stone-600">{copy}</p>
+        </div>
+        <div className="mt-6 space-y-3">
+          <div className="rounded-[20px] border border-stone-200 bg-white px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Checked path</p>
+            <p className="mt-2 break-all font-mono text-xs text-stone-700">{overview.diagnostics.codexHome}</p>
+          </div>
+          <div className="rounded-[20px] border border-stone-200 bg-white px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Launcher fix</p>
+            <p className="mt-2 break-all font-mono text-xs text-stone-700">ai-water-usage --codex-home /path/to/.codex</p>
+          </div>
         </div>
       </div>
     );
@@ -58,16 +86,13 @@ function HeroSnapshot({
           </p>
           <p className="mt-1 text-sm text-stone-600">derived from supported local Codex usage</p>
         </div>
-        <div className="h-12 w-12 rounded-2xl border border-cyan-200 bg-cyan-50 text-center text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-cyan-700 leading-[3rem]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-cyan-700">
           H2O
         </div>
       </div>
       <div className="mt-6 space-y-3">
         {rows.map((row) => (
-          <div
-            key={row.label}
-            className="flex items-center justify-between gap-4 rounded-[20px] border border-stone-200 bg-white px-4 py-3"
-          >
+          <div key={row.label} className="flex items-center justify-between gap-4 rounded-[20px] border border-stone-200 bg-white px-4 py-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">{row.label}</p>
               <p className="mt-1 text-sm text-stone-600">{row.detail}</p>
@@ -89,69 +114,76 @@ function LoadingDashboard() {
         <SkeletonBlock className="h-52 lg:col-span-4" />
       </div>
       <SkeletonBlock className="h-[28rem]" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SkeletonBlock className="h-[28rem]" />
-        <SkeletonBlock className="h-[28rem]" />
-      </div>
+      <SkeletonBlock className="h-64" />
     </section>
   );
 }
 
-export function HomeView() {
-  const timeZone = useTimeZone();
-  const [bucket, setBucket] = useState<Bucket>("day");
-  const [overview, setOverview] = useState<OverviewResponse | null>(null);
-  const [timeseries, setTimeseries] = useState<TimeseriesResponse | null>(null);
-  const [methodology, setMethodology] = useState<MethodologyResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    Promise.all([fetchOverview(timeZone), fetchTimeseries(bucket, timeZone), fetchMethodology()])
-      .then(([nextOverview, nextTimeseries, nextMethodology]) => {
-        if (cancelled) {
-          return;
-        }
-        setOverview(nextOverview);
-        setTimeseries(nextTimeseries);
-        setMethodology(nextMethodology);
-        setError(null);
-      })
-      .catch((caughtError: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        setError(caughtError instanceof Error ? caughtError.message : "Unknown error");
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [bucket, timeZone]);
+function DiagnosticsPanel({ overview }: { overview: OverviewResponse }) {
+  const isNoData = overview.diagnostics.state === "no_data";
 
   return (
+    <section className="panel-shell px-6 py-6 sm:px-8 sm:py-8">
+      <div className="max-w-3xl">
+        <div className="micro-pill">{isNoData ? "Waiting for local history" : "Local read issue"}</div>
+        <h2 className="mt-4 section-heading">
+          {isNoData ? "No Codex history detected" : "Could not read local Codex data"}
+        </h2>
+        <p className="mt-4 text-base leading-7 text-stone-600">
+          {isNoData
+            ? "Run Codex once, then refresh this dashboard. If your logs live somewhere else, point the launcher at that Codex home first."
+            : "Point the launcher at a readable Codex home and refresh. The dashboard only estimates water usage from local Codex history it can actually read."}
+        </p>
+      </div>
+
+      <div className="mt-6 grid gap-3 lg:grid-cols-2">
+        <div className="panel-muted p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Current Codex home</p>
+          <code className="mt-3 block overflow-x-auto text-sm text-stone-800">{overview.diagnostics.codexHome}</code>
+        </div>
+        <div className="panel-muted p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Launcher example</p>
+          <code className="mt-3 block overflow-x-auto text-sm text-stone-800">
+            ai-water-usage --codex-home /path/to/.codex
+          </code>
+        </div>
+      </div>
+
+      {overview.diagnostics.message ? (
+        <div className="mt-4 rounded-[20px] border border-stone-200 bg-stone-50 px-4 py-4 text-sm leading-6 text-stone-700">
+          {overview.diagnostics.message}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function HomeView({
+  bucket,
+  error,
+  loading,
+  overview,
+  timeseries,
+  timeZone,
+  onBucketChange,
+  onOpenMethodology
+}: HomeViewProps) {
+  return (
     <div className="flex flex-col gap-4 lg:gap-5">
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.82fr)]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.8fr)]">
         <div className="panel-shell relative overflow-hidden px-6 py-6 sm:px-8 sm:py-8">
-          <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),transparent_56%)]" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.12),transparent_58%)]" />
           <div className="relative">
             <div className="micro-pill">Local Codex Water Usage</div>
-            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div>
                 <p className="section-kicker">Water-weighted local estimate</p>
                 <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-0.06em] text-stone-950 sm:text-5xl">
                   Water usage estimate from your Codex history
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600">
-                  A cleaner read on local usage: pricing-weighted water estimates, explicit exclusions, and a stable
-                  low-to-high range based on supported OpenAI events.
+                  Understand how much water your supported coding-agent usage likely consumed, using local token history,
+                  pricing-weighted normalization, and transparent exclusions.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-2.5">
                   <span className="micro-pill">Low / central / high range</span>
@@ -177,20 +209,16 @@ export function HomeView() {
           </div>
         </div>
 
-        <HeroSnapshot loading={loading} overview={overview} timeZone={timeZone} />
+        <HeroSnapshot overview={overview} timeZone={timeZone} />
       </section>
 
-      {error ? (
-        <Callout
-          title="Failed to load dashboard data"
-          color="rose"
-          className="rounded-[24px] border border-rose-200 bg-rose-50/90"
-        >
-          {error}
-        </Callout>
-      ) : null}
+      {error ? <AlertBanner title="Failed to load dashboard data">{error}</AlertBanner> : null}
 
-      {loading || !overview || !timeseries || !methodology ? (
+      {loading || !overview ? (
+        <LoadingDashboard />
+      ) : overview.diagnostics.state !== "ready" ? (
+        <DiagnosticsPanel overview={overview} />
+      ) : !timeseries ? (
         <LoadingDashboard />
       ) : (
         <>
@@ -231,26 +259,16 @@ export function HomeView() {
                 <p className="section-kicker">Trend</p>
                 <h2 className="mt-3 section-heading">Water usage by {bucket}</h2>
                 <p className="mt-4 section-copy">
-                  The central estimate is the primary signal. Each point preserves the low and high range together with
-                  excluded and unestimated token counts.
+                  The chart highlights the central estimate while keeping each point’s low-to-high range and non-estimated
+                  tokens easy to inspect.
                 </p>
               </div>
-              <BucketToggle
-                active={bucket}
-                onChange={(nextBucket) => {
-                  startTransition(() => {
-                    setBucket(nextBucket);
-                  });
-                }}
-              />
+              <BucketToggle active={bucket} onChange={onBucketChange} />
             </div>
             <WaterChart points={timeseries.points} />
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-2">
-            <CoverageNotice overview={overview} />
-            <MethodologyPanel methodology={methodology} />
-          </section>
+          <CoverageSummary overview={overview} onOpenMethodology={onOpenMethodology} />
         </>
       )}
     </div>

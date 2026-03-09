@@ -31,10 +31,10 @@ export function MetricCard({
   return (
     <article
       className={joinClasses(
-        "flex h-full flex-col rounded-[28px] border px-5 py-5 shadow-[0_24px_70px_-56px_rgba(28,25,23,0.35)] sm:px-6 sm:py-6",
+        "flex h-full flex-col rounded-[24px] border px-5 py-5 shadow-[0_14px_36px_-28px_rgba(28,25,23,0.18)] sm:px-6 sm:py-6",
         featured
           ? "border-stone-900 bg-stone-950 text-stone-50"
-          : "border-stone-200/80 bg-white/90 text-stone-950",
+          : "border-stone-200 bg-white text-stone-950",
         className
       )}
     >
@@ -67,7 +67,11 @@ export function MetricCard({
       <p
         className={joinClasses(
           "mt-8 font-semibold tracking-[-0.06em]",
-          featured ? "text-5xl text-white sm:text-6xl" : compact ? "text-[1.9rem] text-stone-950" : "text-4xl text-stone-950"
+          featured
+            ? "text-4xl text-white sm:text-5xl"
+            : compact
+              ? "text-[1.9rem] text-stone-950"
+              : "text-[2.2rem] text-stone-950 sm:text-4xl"
         )}
       >
         {value}

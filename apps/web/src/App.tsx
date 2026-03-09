@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
+import type { Bucket, MethodologyResponse, OverviewResponse, TimeseriesResponse } from "@ai-water-usage/shared";
+import { fetchMethodology, fetchOverview, fetchTimeseries } from "./api";
 import { DropletMark } from "./components/DropletMark";
 import { HomeView } from "./views/HomeView";
+import { MethodologyView } from "./views/MethodologyView";
 import { PlaceholderView } from "./views/PlaceholderView";
 
 type AppView = "home" | "usage-over-time" | "prompts" | "methodology";
@@ -33,7 +36,7 @@ const NAV_ITEMS: Array<{
     view: "methodology",
     hash: "#methodology",
     label: "Methodology",
-    description: "A dedicated methodology page for assumptions, calibration, and exclusions is coming soon."
+    description: "Water estimate assumptions, pricing references, and exclusions."
   }
 ];
 
@@ -42,9 +45,28 @@ function resolveViewFromHash(hash: string): AppView {
   return matchedItem?.view ?? "home";
 }
 
+function useTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+function getErrorMessage(caughtError: unknown): string {
+  return caughtError instanceof Error ? caughtError.message : "Unknown error";
+}
+
 export default function App() {
+  const timeZone = useTimeZone();
   const [activeView, setActiveView] = useState<AppView>(() => resolveViewFromHash(window.location.hash));
-  const [hasVisitedHome, setHasVisitedHome] = useState(activeView === "home");
+  const [bucket, setBucket] = useState<Bucket>("day");
+  const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [timeseriesByBucket, setTimeseriesByBucket] = useState<Partial<Record<Bucket, TimeseriesResponse>>>({});
+  const [methodology, setMethodology] = useState<MethodologyResponse | null>(null);
+  const [loadedTimeZone, setLoadedTimeZone] = useState(timeZone);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [timeseriesLoading, setTimeseriesLoading] = useState(false);
+  const [methodologyLoading, setMethodologyLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [timeseriesError, setTimeseriesError] = useState<string | null>(null);
+  const [methodologyError, setMethodologyError] = useState<string | null>(null);
 
   useEffect(() => {
     const syncViewFromHash = () => {
@@ -58,10 +80,126 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (activeView === "home" && !hasVisitedHome) {
-      setHasVisitedHome(true);
+    if (loadedTimeZone === timeZone) {
+      return;
     }
-  }, [activeView, hasVisitedHome]);
+
+    setLoadedTimeZone(timeZone);
+    setOverview(null);
+    setTimeseriesByBucket({});
+    setMethodology(null);
+    setOverviewError(null);
+    setTimeseriesError(null);
+    setMethodologyError(null);
+  }, [loadedTimeZone, timeZone]);
+
+  useEffect(() => {
+    if (activeView !== "home" && activeView !== "methodology") {
+      return;
+    }
+
+    if (overview) {
+      return;
+    }
+
+    let cancelled = false;
+    setOverviewLoading(true);
+    setOverviewError(null);
+
+    fetchOverview(timeZone)
+      .then((nextOverview) => {
+        if (!cancelled) {
+          setOverview(nextOverview);
+        }
+      })
+      .catch((caughtError: unknown) => {
+        if (!cancelled) {
+          setOverviewError(getErrorMessage(caughtError));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setOverviewLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, overview, timeZone]);
+
+  useEffect(() => {
+    if (activeView !== "home") {
+      return;
+    }
+
+    if (!overview || overview.diagnostics.state !== "ready" || timeseriesByBucket[bucket]) {
+      return;
+    }
+
+    let cancelled = false;
+    setTimeseriesLoading(true);
+    setTimeseriesError(null);
+
+    fetchTimeseries(bucket, timeZone)
+      .then((nextTimeseries) => {
+        if (!cancelled) {
+          setTimeseriesByBucket((current) => ({
+            ...current,
+            [nextTimeseries.bucket]: nextTimeseries
+          }));
+        }
+      })
+      .catch((caughtError: unknown) => {
+        if (!cancelled) {
+          setTimeseriesError(getErrorMessage(caughtError));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTimeseriesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, bucket, overview, timeZone, timeseriesByBucket]);
+
+  useEffect(() => {
+    if (activeView !== "methodology") {
+      return;
+    }
+
+    if (methodology) {
+      return;
+    }
+
+    let cancelled = false;
+    setMethodologyLoading(true);
+    setMethodologyError(null);
+
+    fetchMethodology()
+      .then((nextMethodology) => {
+        if (!cancelled) {
+          setMethodology(nextMethodology);
+        }
+      })
+      .catch((caughtError: unknown) => {
+        if (!cancelled) {
+          setMethodologyError(getErrorMessage(caughtError));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setMethodologyLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, methodology]);
 
   const navigateTo = (view: AppView) => {
     const nextHash = NAV_ITEMS.find((item) => item.view === view)?.hash ?? "#home";
@@ -72,13 +210,18 @@ export default function App() {
   };
 
   const activeItem = NAV_ITEMS.find((item) => item.view === activeView) ?? NAV_ITEMS[0]!;
-  const shouldRenderHome = hasVisitedHome || activeView === "home";
+  const activeTimeseries = timeseriesByBucket[bucket] ?? null;
+  const shouldUseTimeseries = overview?.diagnostics.state === "ready";
+  const homeLoading = (overviewLoading && !overview) || (shouldUseTimeseries && timeseriesLoading && !activeTimeseries);
+  const homeError = overviewError ?? (shouldUseTimeseries ? timeseriesError : null);
+  const methodologyViewLoading = (overviewLoading && !overview) || (methodologyLoading && !methodology);
+  const methodologyViewError = overviewError ?? methodologyError;
 
   return (
-    <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+    <main className="px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-7xl">
         <div className="app-frame">
-          <header className="border-b border-white/70 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+          <header className="border-b border-stone-200 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <a
                 href="#home"
@@ -89,7 +232,7 @@ export default function App() {
                 }}
               >
                 <span className="brand-mark-shell">
-                  <DropletMark className="h-8 w-8" />
+                  <DropletMark className="h-7 w-7" />
                 </span>
                 <span>
                   <span className="section-kicker block">Water-weighted local estimate</span>
@@ -99,7 +242,7 @@ export default function App() {
                 </span>
               </a>
 
-              <nav aria-label="Primary" className="flex flex-wrap gap-2 sm:justify-end">
+              <nav aria-label="Primary" className="flex flex-wrap gap-2 lg:justify-end">
                 {NAV_ITEMS.map((item) => {
                   const isActive = item.view === activeView;
                   return (
@@ -122,10 +265,23 @@ export default function App() {
           </header>
 
           <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-            {shouldRenderHome ? (
-              <div hidden={activeView !== "home"}>
-                <HomeView />
-              </div>
+            {activeView === "home" ? (
+              <HomeView
+                bucket={bucket}
+                error={homeError}
+                loading={homeLoading}
+                overview={overview}
+                timeseries={activeTimeseries}
+                timeZone={timeZone}
+                onBucketChange={(nextBucket) => {
+                  startTransition(() => {
+                    setBucket(nextBucket);
+                  });
+                }}
+                onOpenMethodology={() => {
+                  navigateTo("methodology");
+                }}
+              />
             ) : null}
 
             {activeView === "usage-over-time" ? (
@@ -145,10 +301,11 @@ export default function App() {
             ) : null}
 
             {activeView === "methodology" ? (
-              <PlaceholderView
-                eyebrow="Methodology"
-                title="Dedicated methodology page coming soon"
-                description={activeItem.description}
+              <MethodologyView
+                error={methodologyViewError}
+                loading={methodologyViewLoading}
+                methodology={methodology}
+                overview={overview}
               />
             ) : null}
           </div>
