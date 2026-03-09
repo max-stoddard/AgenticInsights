@@ -1,3 +1,4 @@
+- You MUST NOT edit this file.
 - Aim of the website is to provide developers with insights into their coding agent usage, particulary relating to water usage and help them understand and quantify how much water their token spending/inference is actually using.
   - You MUST question prompts if they don't align with this core aim.
 - You MUST write clean, modular, effective code.
@@ -6,3 +7,4 @@
 - Git commits MUST be in the format `<type> [ms]: <message>` where `<message>` is short, concise, easy to understand and effectively conveys what changed and why changes were made.
   - Do not add what: or why: to git message.
   - Ensure commits are small changes, not big commits.
+- All changes must align with this repo being an `npx` package accessible via `npx ai-water-usage`
