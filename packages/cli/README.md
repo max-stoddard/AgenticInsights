@@ -1,11 +1,11 @@
-# AI Water Usage
+# Agentic Insights
 
-`ai-water-usage` launches a local dashboard that reads your Codex usage artifacts and estimates the water impact of your coding-agent usage.
+`agentic-insights` launches a local dashboard that reads your Codex usage artifacts and estimates the water impact of your coding-agent usage.
 
 ## Run
 
 ```bash
-npx ai-water-usage@latest
+npx agentic-insights@latest
 ```
 
 That command starts a local server, opens the dashboard in your browser, and reads usage data from your machine.
@@ -13,17 +13,17 @@ That command starts a local server, opens the dashboard in your browser, and rea
 You can also install a reusable command:
 
 ```bash
-npm install -g ai-water-usage
-ai-water-usage
+npm install -g agentic-insights
+agentic-insights
 ```
 
 ## Useful flags
 
 ```bash
-ai-water-usage --port 3001
-ai-water-usage --host 127.0.0.1
-ai-water-usage --codex-home /path/to/.codex
-ai-water-usage --no-open
+agentic-insights --port 3001
+agentic-insights --host 127.0.0.1
+agentic-insights --codex-home /path/to/.codex
+agentic-insights --no-open
 ```
 
 ## Data source
@@ -38,5 +38,5 @@ Override that location with `--codex-home` or `CODEX_HOME=/path/to/.codex`.
 
 ## Repository
 
-- Source: https://github.com/max-stoddard/AIWaterUsage
-- Issues: https://github.com/max-stoddard/AIWaterUsage/issues
+- Source: https://github.com/max-stoddard/AgenticInsights
+- Issues: https://github.com/max-stoddard/AgenticInsights/issues

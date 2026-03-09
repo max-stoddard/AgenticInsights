@@ -1,4 +1,4 @@
-# AI Water Usage
+# Agentic Insights
 
 Local TypeScript dashboard that reads Codex usage artifacts from your machine and estimates water usage from token activity.
 
@@ -7,7 +7,7 @@ Local TypeScript dashboard that reads Codex usage artifacts from your machine an
 Requires Node `18+`.
 
 ```bash
-npx ai-water-usage@latest
+npx agentic-insights@latest
 ```
 
 That command starts a local server, opens the dashboard in your browser, and reads Codex usage from your own machine.
@@ -15,16 +15,16 @@ That command starts a local server, opens the dashboard in your browser, and rea
 If you want a reusable command instead:
 
 ```bash
-npm install -g ai-water-usage
-ai-water-usage
+npm install -g agentic-insights
+agentic-insights
 ```
 
 Supported launcher flags:
 
 ```bash
-ai-water-usage --port 3001 --host 127.0.0.1
-ai-water-usage --codex-home /path/to/.codex
-ai-water-usage --no-open
+agentic-insights --port 3001 --host 127.0.0.1
+agentic-insights --codex-home /path/to/.codex
+agentic-insights --no-open
 ```
 
 ## Run locally from the repo
@@ -45,7 +45,7 @@ By default the backend reads:
 - `~/.codex/archived_sessions`
 - `~/.codex/log/codex-tui.log`
 
-You can override the Codex home directory with `CODEX_HOME=/path/to/.codex` or `ai-water-usage --codex-home /path/to/.codex`.
+You can override the Codex home directory with `CODEX_HOME=/path/to/.codex` or `agentic-insights --codex-home /path/to/.codex`.
 
 ## What the dashboard shows
 
@@ -107,11 +107,11 @@ referenceEventCostUsd = median(eventCostUsd)
 
 This median is computed across all supported positive-usage events found in your local history and persisted to:
 
-- Linux: `~/.cache/ai-water-usage/calibration.json`
-- macOS: `~/Library/Caches/ai-water-usage/calibration.json`
-- Windows: `%LOCALAPPDATA%\ai-water-usage\calibration.json`
+- Linux: `~/.cache/agentic-insights/calibration.json`
+- macOS: `~/Library/Caches/agentic-insights/calibration.json`
+- Windows: `%LOCALAPPDATA%\agentic-insights\calibration.json`
 
-You can override the cache location with `AI_WATER_USAGE_CACHE_DIR=/path/to/cache`.
+You can override the cache location with `AGENTIC_INSIGHTS_CACHE_DIR=/path/to/cache`.
 
 This makes the dashboard stable across refreshes while still being anchored to the token mix in your own logs.
 
@@ -174,6 +174,25 @@ npm run test
 npm run build
 npm run test:pack
 ```
+
+## Release
+
+After the initial npm publish, releases use npm trusted publishing from GitHub Actions.
+
+Before the first publish, verify `agentic-insights` is available on npm.
+
+Bootstrap for the first release only:
+
+1. Create an npm automation token on the npm account that will own `agentic-insights`.
+2. Add that token as the GitHub Actions secret `NPM_TOKEN`.
+3. Publish the first version from the tagged workflow using that token.
+
+After the first successful publish:
+
+1. In the npm package settings for `agentic-insights`, add `max-stoddard/AgenticInsights` and `.github/workflows/release.yml` as a trusted publisher.
+2. Cut the next release tag and confirm the workflow publishes with provenance and no token-based auth.
+3. Delete the `NPM_TOKEN` GitHub Actions secret once trusted publishing is verified.
+4. Deprecate `ai-water-usage` on npm with a message directing users to `agentic-insights`.
 
 ## References
 
