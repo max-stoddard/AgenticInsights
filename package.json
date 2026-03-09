@@ -1,5 +1,5 @@
 {
-  "name": "ai-water-usage-workspace",
+  "name": "agentic-insights-workspace",
   "private": true,
   "version": "0.1.0",
   "license": "MIT",
@@ -9,12 +9,12 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n server,web -c cyan,green \"npm run dev -w @ai-water-usage/server\" \"npm run dev -w @ai-water-usage/web\"",
-    "build": "npm run build -w @ai-water-usage/shared && npm run build -w @ai-water-usage/server && npm run build -w @ai-water-usage/web && npm run build -w ai-water-usage",
-    "test": "npm run test -w @ai-water-usage/shared && npm run test -w @ai-water-usage/server && npm run test -w @ai-water-usage/web && npm run test -w ai-water-usage",
+    "dev": "concurrently -n server,web -c cyan,green \"npm run dev -w @agentic-insights/server\" \"npm run dev -w @agentic-insights/web\"",
+    "build": "npm run build -w @agentic-insights/shared && npm run build -w @agentic-insights/server && npm run build -w @agentic-insights/web && npm run build -w agentic-insights",
+    "test": "npm run test -w @agentic-insights/shared && npm run test -w @agentic-insights/server && npm run test -w @agentic-insights/web && npm run test -w agentic-insights",
     "test:pack": "node ./packages/cli/test/smoke.mjs",
-    "lint": "npm run lint -w @ai-water-usage/shared && npm run lint -w @ai-water-usage/server && npm run lint -w @ai-water-usage/web && npm run lint -w ai-water-usage",
-    "pack:cli": "npm pack -w ai-water-usage"
+    "lint": "npm run lint -w @agentic-insights/shared && npm run lint -w @agentic-insights/server && npm run lint -w @agentic-insights/web && npm run lint -w agentic-insights",
+    "pack:cli": "npm pack -w agentic-insights"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

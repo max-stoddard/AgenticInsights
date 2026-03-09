@@ -1,5 +1,5 @@
 {
-  "name": "@ai-water-usage/web",
+  "name": "@agentic-insights/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-water-usage/shared": "0.1.0",
+    "@agentic-insights/shared": "0.1.0",
     "autoprefixer": "^10.4.27",
     "postcss": "^8.5.8",
     "react": "^19.0.0",

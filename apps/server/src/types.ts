@@ -1,4 +1,4 @@
-import type { CalibrationSnapshot, OverviewDiagnostics, PricingEntry, WaterRange } from "@ai-water-usage/shared";
+import type { CalibrationSnapshot, OverviewDiagnostics, PricingEntry, WaterRange } from "@agentic-insights/shared";
 
 export interface FileRecord {
   path: string;

@@ -1,4 +1,4 @@
-import type { Bucket } from "@ai-water-usage/shared";
+import type { Bucket } from "@agentic-insights/shared";
 
 interface ZonedDateParts {
   year: number;

@@ -1,4 +1,4 @@
-import type { MethodologyResponse } from "@ai-water-usage/shared";
+import type { MethodologyResponse } from "@agentic-insights/shared";
 import { formatLitres, formatNumber } from "../lib/format";
 
 interface MethodologyPanelProps {

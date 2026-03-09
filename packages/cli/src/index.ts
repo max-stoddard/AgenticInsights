@@ -51,7 +51,7 @@ async function run(): Promise<void> {
     }
 
     shuttingDown = true;
-    console.log(`\nReceived ${signal}. Shutting down AI Water Usage...`);
+    console.log(`\nReceived ${signal}. Shutting down Agentic Insights...`);
     await app.close();
     process.exit(0);
   };
@@ -68,7 +68,7 @@ async function run(): Promise<void> {
   const browserHost = resolveBrowserHost(options.host);
   const url = formatUrl(browserHost, selectedPort);
 
-  console.log(`AI Water Usage is running at ${url}`);
+  console.log(`Agentic Insights is running at ${url}`);
   console.log(`Reading Codex usage from ${codexHome}`);
   if (selectedPort !== options.preferredPort) {
     console.log(`Port ${options.preferredPort} was unavailable. Using ${selectedPort} instead.`);
@@ -95,6 +95,6 @@ run().catch((error: unknown) => {
   }
 
   const message = error instanceof Error ? error.message : "Unknown launcher error";
-  console.error(`Failed to start AI Water Usage: ${message}`);
+  console.error(`Failed to start Agentic Insights: ${message}`);
   process.exit(1);
 });

@@ -1,4 +1,4 @@
-import type { Bucket, TimeseriesPoint, WaterRange } from "@ai-water-usage/shared";
+import type { Bucket, TimeseriesPoint, WaterRange } from "@agentic-insights/shared";
 import type { ClassifiedUsageEvent } from "./types.js";
 import { getBucketKey, getBucketLabel } from "./timezone.js";
 

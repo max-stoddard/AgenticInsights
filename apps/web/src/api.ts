@@ -1,4 +1,4 @@
-import type { MethodologyResponse, OverviewResponse, TimeseriesResponse } from "@ai-water-usage/shared";
+import type { MethodologyResponse, OverviewResponse, TimeseriesResponse } from "@agentic-insights/shared";
 
 async function getJson<T>(input: string): Promise<T> {
   const response = await fetch(input);

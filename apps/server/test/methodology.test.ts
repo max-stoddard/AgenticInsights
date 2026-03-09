@@ -7,9 +7,9 @@ let previousCacheDir: string | undefined;
 let cleanupCacheDir: (() => void) | null = null;
 
 beforeEach(() => {
-  previousCacheDir = process.env.AI_WATER_USAGE_CACHE_DIR;
+  previousCacheDir = process.env.AGENTIC_INSIGHTS_CACHE_DIR;
   const cache = createCacheDir();
-  process.env.AI_WATER_USAGE_CACHE_DIR = cache.dir;
+  process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
   cleanupCacheDir = cache.cleanup;
 });
 
@@ -20,9 +20,9 @@ afterEach(() => {
   }
 
   if (previousCacheDir === undefined) {
-    delete process.env.AI_WATER_USAGE_CACHE_DIR;
+    delete process.env.AGENTIC_INSIGHTS_CACHE_DIR;
   } else {
-    process.env.AI_WATER_USAGE_CACHE_DIR = previousCacheDir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = previousCacheDir;
   }
 });
 

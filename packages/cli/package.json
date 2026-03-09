@@ -1,5 +1,5 @@
 {
-  "name": "ai-water-usage",
+  "name": "agentic-insights",
   "version": "0.1.0",
   "description": "Launch a local dashboard that estimates the water impact of Codex usage",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "url": "https://github.com/max-stoddard/AgenticInsights/issues"
   },
   "bin": {
-    "ai-water-usage": "./dist/index.js"
+    "agentic-insights": "./dist/index.js"
   },
   "files": [
     "dist"
@@ -26,7 +26,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node ./scripts/prepare-runtime.mjs",
-    "prepack": "npm run build -w @ai-water-usage/shared && npm run build -w @ai-water-usage/server && npm run build -w @ai-water-usage/web && npm run build",
+    "prepack": "npm run build -w @agentic-insights/shared && npm run build -w @agentic-insights/server && npm run build -w @agentic-insights/web && npm run build",
     "lint": "eslint src test --ext .ts",
     "test": "vitest run"
   },

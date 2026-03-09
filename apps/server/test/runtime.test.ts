@@ -11,7 +11,7 @@ const cleanupDirs: string[] = [];
 
 beforeEach(() => {
   previousCodexHome = process.env.CODEX_HOME;
-  previousCacheDir = process.env.AI_WATER_USAGE_CACHE_DIR;
+  previousCacheDir = process.env.AGENTIC_INSIGHTS_CACHE_DIR;
 });
 
 afterEach(() => {
@@ -22,9 +22,9 @@ afterEach(() => {
   }
 
   if (previousCacheDir === undefined) {
-    delete process.env.AI_WATER_USAGE_CACHE_DIR;
+    delete process.env.AGENTIC_INSIGHTS_CACHE_DIR;
   } else {
-    process.env.AI_WATER_USAGE_CACHE_DIR = previousCacheDir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = previousCacheDir;
   }
 
   for (const dir of cleanupDirs.splice(0)) {
@@ -33,12 +33,12 @@ afterEach(() => {
 });
 
 function createWebDist(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ai-water-web-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agentic-insights-web-"));
   cleanupDirs.push(dir);
 
   fs.mkdirSync(path.join(dir, "assets"), { recursive: true });
   fs.writeFileSync(path.join(dir, "index.html"), "<!doctype html><html><body><div id=\"root\"></div></body></html>");
-  fs.writeFileSync(path.join(dir, "assets", "app.js"), "console.log('ai-water-usage');");
+  fs.writeFileSync(path.join(dir, "assets", "app.js"), "console.log('agentic-insights');");
 
   return dir;
 }
@@ -55,7 +55,7 @@ describe("server runtime", () => {
     const assetResponse = await app.inject({ method: "GET", url: "/assets/app.js" });
     expect(assetResponse.statusCode).toBe(200);
     expect(assetResponse.headers["content-type"]).toContain("text/javascript");
-    expect(assetResponse.body).toContain("ai-water-usage");
+    expect(assetResponse.body).toContain("agentic-insights");
 
     const fallbackResponse = await app.inject({ method: "GET", url: "/methodology" });
     expect(fallbackResponse.statusCode).toBe(200);
@@ -68,7 +68,7 @@ describe("server runtime", () => {
     const codex = createCodexHome();
     const cache = createCacheDir();
     process.env.CODEX_HOME = codex.dir;
-    process.env.AI_WATER_USAGE_CACHE_DIR = cache.dir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
 
     writeJsonlFile(codex.dir, "sessions/2026/03/09/session-openai.jsonl", [
       {
@@ -128,7 +128,7 @@ describe("server runtime", () => {
     const codex = createCodexHome();
     const cache = createCacheDir();
     process.env.CODEX_HOME = codex.dir;
-    process.env.AI_WATER_USAGE_CACHE_DIR = cache.dir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
 
     const app = createApp();
     const response = await app.inject({ method: "GET", url: "/api/overview" });
@@ -147,7 +147,7 @@ describe("server runtime", () => {
     const missingDir = path.join(os.tmpdir(), `ai-water-missing-${Date.now()}`);
     const cache = createCacheDir();
     process.env.CODEX_HOME = missingDir;
-    process.env.AI_WATER_USAGE_CACHE_DIR = cache.dir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
 
     const app = createApp();
     const response = await app.inject({ method: "GET", url: "/api/overview" });

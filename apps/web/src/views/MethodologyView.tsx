@@ -1,4 +1,4 @@
-import type { MethodologyResponse, OverviewResponse } from "@ai-water-usage/shared";
+import type { MethodologyResponse, OverviewResponse } from "@agentic-insights/shared";
 import { AlertBanner } from "../components/AlertBanner";
 import { CoverageDetailsPanel } from "../components/CoverageDetailsPanel";
 import { MethodologyPanel } from "../components/MethodologyPanel";

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { TimeseriesPoint } from "@ai-water-usage/shared";
+import type { TimeseriesPoint } from "@agentic-insights/shared";
 import { formatLitres, formatNumber } from "../lib/format";
 
 interface WaterChartProps {

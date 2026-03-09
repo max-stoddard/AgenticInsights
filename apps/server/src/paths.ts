@@ -27,20 +27,20 @@ export function getDefaultCodexHome(): string {
 }
 
 export function getCacheDir(): string {
-  const configured = process.env.AI_WATER_USAGE_CACHE_DIR;
+  const configured = process.env.AGENTIC_INSIGHTS_CACHE_DIR;
   if (configured) {
     return path.resolve(configured);
   }
 
   if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Caches", "ai-water-usage");
+    return path.join(os.homedir(), "Library", "Caches", "agentic-insights");
   }
 
   if (process.platform === "win32") {
-    return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "ai-water-usage");
+    return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "agentic-insights");
   }
 
-  return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"), "ai-water-usage");
+  return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"), "agentic-insights");
 }
 
 export function ensureDirSync(dirPath: string): void {

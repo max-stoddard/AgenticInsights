@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { CalibrationSnapshot } from "@ai-water-usage/shared";
+import type { CalibrationSnapshot } from "@agentic-insights/shared";
 import { ensureDirSync, getCacheDir } from "./paths.js";
 
 interface CalibrationFile {

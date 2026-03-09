@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useState } from "react";
-import type { Bucket, MethodologyResponse, OverviewResponse, TimeseriesResponse } from "@ai-water-usage/shared";
+import type { Bucket, MethodologyResponse, OverviewResponse, TimeseriesResponse } from "@agentic-insights/shared";
 import { fetchMethodology, fetchOverview, fetchTimeseries } from "./api";
 import { DropletMark } from "./components/DropletMark";
 import { HomeView } from "./views/HomeView";
@@ -237,7 +237,7 @@ export default function App() {
                 <span>
                   <span className="section-kicker block">Water-weighted local estimate</span>
                   <span className="mt-1 block text-lg font-semibold tracking-[-0.04em] text-stone-950 sm:text-xl">
-                    Codex Water Usage
+                    Agentic Insights
                   </span>
                 </span>
               </a>

@@ -1,7 +1,7 @@
-const HELP_TEXT = `AI Water Usage
+const HELP_TEXT = `Agentic Insights
 
 Usage:
-  ai-water-usage [options]
+  agentic-insights [options]
 
 Options:
   --port <number>        Preferred local port (default: 3001)

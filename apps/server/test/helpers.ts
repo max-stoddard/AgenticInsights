@@ -13,7 +13,7 @@ export interface TestCacheDir {
 }
 
 export function createCodexHome(): TestCodexHome {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ai-water-usage-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agentic-insights-"));
   fs.mkdirSync(path.join(dir, "sessions", "2026", "03", "09"), { recursive: true });
   fs.mkdirSync(path.join(dir, "archived_sessions"), { recursive: true });
   fs.mkdirSync(path.join(dir, "log"), { recursive: true });
@@ -24,7 +24,7 @@ export function createCodexHome(): TestCodexHome {
 }
 
 export function createCacheDir(): TestCacheDir {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ai-water-cache-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agentic-insights-cache-"));
   return {
     dir,
     cleanup: () => fs.rmSync(dir, { recursive: true, force: true })

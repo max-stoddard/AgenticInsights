@@ -5,7 +5,7 @@ import type {
   OverviewResponse,
   TimeseriesResponse,
   WaterRange
-} from "@ai-water-usage/shared";
+} from "@agentic-insights/shared";
 import { getOrCreateCalibration, buildSignature } from "./calibration.js";
 import { listSessionFiles, getTuiLogPath } from "./discovery.js";
 import { getCodexHomeConfig } from "./paths.js";

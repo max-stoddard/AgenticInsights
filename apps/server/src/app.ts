@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { Bucket, ErrorResponse } from "@ai-water-usage/shared";
+import type { Bucket, ErrorResponse } from "@agentic-insights/shared";
 import { DashboardService } from "./service.js";
 import { registerStaticRoutes } from "./static.js";
 

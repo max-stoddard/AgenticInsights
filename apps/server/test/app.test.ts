@@ -7,7 +7,7 @@ let previousCacheDir: string | undefined;
 
 beforeEach(() => {
   previousCodexHome = process.env.CODEX_HOME;
-  previousCacheDir = process.env.AI_WATER_USAGE_CACHE_DIR;
+  previousCacheDir = process.env.AGENTIC_INSIGHTS_CACHE_DIR;
 });
 
 afterEach(() => {
@@ -18,9 +18,9 @@ afterEach(() => {
   }
 
   if (previousCacheDir === undefined) {
-    delete process.env.AI_WATER_USAGE_CACHE_DIR;
+    delete process.env.AGENTIC_INSIGHTS_CACHE_DIR;
   } else {
-    process.env.AI_WATER_USAGE_CACHE_DIR = previousCacheDir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = previousCacheDir;
   }
 });
 
@@ -29,7 +29,7 @@ describe("API routes", () => {
     const codex = createCodexHome();
     const cache = createCacheDir();
     process.env.CODEX_HOME = codex.dir;
-    process.env.AI_WATER_USAGE_CACHE_DIR = cache.dir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
 
     const sessionId = "session-openai";
     writeJsonlFile(codex.dir, "sessions/2026/03/09/rollout-openai.jsonl", [

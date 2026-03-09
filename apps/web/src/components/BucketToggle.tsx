@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import type { Bucket } from "@ai-water-usage/shared";
+import type { Bucket } from "@agentic-insights/shared";
 
 const options: Array<{ label: string; value: Bucket }> = [
   { label: "Day", value: "day" },

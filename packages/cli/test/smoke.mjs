@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "../../..");
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ai-water-pack-"));
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "agentic-insights-pack-"));
 const requireFromHere = createRequire(import.meta.url);
 
 let tarballPath = null;
@@ -189,7 +189,7 @@ async function waitForServer(url, onRunning) {
 }
 
 async function main() {
-  const packOutput = execFileSync("npm", ["pack", "-w", "ai-water-usage", "--silent"], {
+  const packOutput = execFileSync("npm", ["pack", "-w", "agentic-insights", "--silent"], {
     cwd: repoRoot,
     encoding: "utf8"
   });
@@ -223,7 +223,7 @@ async function main() {
       cwd: packageDir,
       env: {
         ...process.env,
-        AI_WATER_USAGE_CACHE_DIR: cacheDir
+        AGENTIC_INSIGHTS_CACHE_DIR: cacheDir
       },
       stdio: ["ignore", "pipe", "pipe"]
     }
@@ -246,7 +246,7 @@ async function main() {
     assert.match(body, /<div id="root"><\/div>/);
   });
 
-  assert.match(stdout, new RegExp(`AI Water Usage is running at http://127\\.0\\.0\\.1:${port}`));
+  assert.match(stdout, new RegExp(`Agentic Insights is running at http://127\\.0\\.0\\.1:${port}`));
   assert.match(stdout, /Browser auto-open disabled\./);
 }
 

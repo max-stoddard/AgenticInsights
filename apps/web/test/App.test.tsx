@@ -292,7 +292,7 @@ describe("App", () => {
 
     expect((await screen.findAllByText(/No Codex history detected/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/Run Codex once, then refresh this dashboard/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/ai-water-usage --codex-home \/path\/to\/\.codex/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/agentic-insights --codex-home \/path\/to\/\.codex/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("/home/dev/.codex").length).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

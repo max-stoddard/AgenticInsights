@@ -1,4 +1,4 @@
-import type { Bucket, OverviewResponse, TimeseriesResponse } from "@ai-water-usage/shared";
+import type { Bucket, OverviewResponse, TimeseriesResponse } from "@agentic-insights/shared";
 import { AlertBanner } from "../components/AlertBanner";
 import { BucketToggle } from "../components/BucketToggle";
 import { CoverageSummary } from "../components/CoverageSummary";
@@ -61,7 +61,7 @@ function HeroSnapshot({
           </div>
           <div className="rounded-[20px] border border-stone-200 bg-white px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Launcher fix</p>
-            <p className="mt-2 break-all font-mono text-xs text-stone-700">ai-water-usage --codex-home /path/to/.codex</p>
+            <p className="mt-2 break-all font-mono text-xs text-stone-700">agentic-insights --codex-home /path/to/.codex</p>
           </div>
         </div>
       </div>
@@ -161,7 +161,7 @@ function DiagnosticsPanel({ overview }: { overview: OverviewResponse }) {
         <div className="panel-muted p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Launcher example</p>
           <code className="mt-3 block overflow-x-auto text-sm text-stone-800">
-            ai-water-usage --codex-home /path/to/.codex
+            agentic-insights --codex-home /path/to/.codex
           </code>
         </div>
       </div>
@@ -191,7 +191,7 @@ export function HomeView({
         <div className="panel-shell relative overflow-hidden px-6 py-6 sm:px-8 sm:py-8">
           <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.12),transparent_58%)]" />
           <div className="relative">
-            <div className="micro-pill">Local Codex Water Usage</div>
+            <div className="micro-pill">Local Codex water insights</div>
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div>
                 <p className="section-kicker">Water-weighted local estimate</p>

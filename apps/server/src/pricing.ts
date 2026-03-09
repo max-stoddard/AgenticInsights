@@ -1,4 +1,4 @@
-import type { PricingEntry, WaterRange } from "@ai-water-usage/shared";
+import type { PricingEntry, WaterRange } from "@agentic-insights/shared";
 
 export const BENCHMARK_COEFFICIENTS: WaterRange = {
   low: 0.010585,

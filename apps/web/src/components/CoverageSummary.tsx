@@ -1,4 +1,4 @@
-import type { OverviewResponse } from "@ai-water-usage/shared";
+import type { OverviewResponse } from "@agentic-insights/shared";
 import { formatNumber } from "../lib/format";
 
 interface CoverageSummaryProps {
