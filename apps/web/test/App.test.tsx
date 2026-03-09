@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("App", () => {
-  it("loads overview data and switches bucket datasets", async () => {
+  it("loads overview data, supports keyboard bucket changes, and handles empty chart data", async () => {
     fetchMock.mockImplementation(async (input) => {
       const url = String(input);
       if (url.startsWith("/api/overview")) {
@@ -71,9 +71,9 @@ describe("App", () => {
               }
             ],
             benchmarkCoefficients: {
-              low: 0.010619,
+              low: 0.010585,
               central: 0.016904,
-              high: 0.029915
+              high: 0.029926
             },
             calibration: {
               referenceEventCostUsd: 0.123,
@@ -82,7 +82,17 @@ describe("App", () => {
               supportedMedianSource: "local_median_event_cost_usd"
             },
             exclusions: [],
-            sourceLinks: [{ label: "OpenAI API pricing", url: "https://openai.com/api/pricing/" }]
+            sourceLinks: [
+              {
+                label: "CACM DOI: Making AI Less 'Thirsty' (Li, Yang, Islam, Ren)",
+                url: "https://doi.org/10.1145/3724499"
+              },
+              {
+                label: "arXiv: Uncovering and Addressing the Secret Water Footprint of AI Models",
+                url: "https://arxiv.org/abs/2304.03271"
+              },
+              { label: "OpenAI API pricing", url: "https://openai.com/api/pricing/" }
+            ]
           }),
           { status: 200 }
         );
@@ -146,20 +156,37 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByLabelText("Loading dashboard")).toBeInTheDocument();
-    await screen.findByText(/Water-weighted usage from your Codex history/i);
+    await screen.findByRole("heading", { name: /Water usage estimate from your Codex history/i });
     await waitFor(() => {
       expect(screen.getAllByText("1.20 L").length).toBeGreaterThan(0);
     });
     expect(screen.queryByLabelText("Loading dashboard")).not.toBeInTheDocument();
     expect(screen.getByText(/50 tokens excluded because unsupported provider/i)).toBeInTheDocument();
+    expect(screen.getByText(/Supported token flow converted into a water estimate/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /CACM DOI: Making AI Less 'Thirsty' \(Li, Yang, Islam, Ren\)/i })
+    ).toHaveAttribute("href", "https://doi.org/10.1145/3724499");
 
-    fireEvent.click(screen.getByRole("tab", { name: "week" }));
+    const dayTab = screen.getByRole("tab", { name: "Day" });
+    dayTab.focus();
+    fireEvent.keyDown(dayTab, { key: "ArrowRight", code: "ArrowRight" });
 
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Week" })).toHaveAttribute("aria-selected", "true");
+    });
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=week"));
     });
     await waitFor(() => {
-      expect(screen.getAllByText("2.40 L").length).toBeGreaterThan(0);
+      expect(screen.getByText(/Water usage by week/i)).toBeInTheDocument();
     });
+    expect(screen.queryByText("No water estimate available for this bucket.")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Month" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=month"));
+    });
+    expect(await screen.findByText("No water estimate available for this bucket.")).toBeInTheDocument();
   });
 });
