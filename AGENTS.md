@@ -1,4 +1,4 @@
-- Aim of the website is to provide developing with insights into their LLM usage, particulary relating to water usage and help them understand and quantify how much water their token/AI usage is actually using.
+- Aim of the website is to provide developers with insights into their coding agent usage, particulary relating to water usage and help them understand and quantify how much water their token spending/inference is actually using.
   - You MUST question prompts if they don't align with this core aim.
 - You MUST write clean, modular, effective code.
 - You MUST reuse existing shared and helper code as much as possible.
