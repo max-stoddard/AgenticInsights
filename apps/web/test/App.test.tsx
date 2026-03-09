@@ -181,6 +181,9 @@ describe("App", () => {
     expect(screen.getByText(/Supported token flow converted into a water estimate/i)).toBeInTheDocument();
     expect(screen.queryByText(/How tokens become water/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /View exclusions and pricing/i })).toBeInTheDocument();
+    expect(screen.getByText(/Copyright Max Stoddard 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/Last indexed 9 Mar 2026/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Coverage snapshot$/i)).not.toBeInTheDocument();
 
     const dayTab = screen.getByRole("tab", { name: "Day" });
     dayTab.focus();

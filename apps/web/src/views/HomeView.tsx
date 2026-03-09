@@ -19,11 +19,9 @@ interface HomeViewProps {
 }
 
 function HeroSnapshot({
-  overview,
-  timeZone
+  overview
 }: {
   overview: OverviewResponse | null;
-  timeZone: string;
 }) {
   if (!overview) {
     return (
@@ -72,8 +70,7 @@ function HeroSnapshot({
 
   const rows = [
     { label: "Estimated litres", value: formatLitres(overview.waterLitres.central), detail: "central estimate" },
-    { label: "Supported events", value: formatNumber(overview.coverage.supportedEvents), detail: "priced and estimated" },
-    { label: "Last indexed", value: formatDateTime(overview.lastIndexedAt), detail: timeZone }
+    { label: "Supported events", value: formatNumber(overview.coverage.supportedEvents), detail: "priced and estimated" }
   ];
 
   return (
@@ -102,6 +99,26 @@ function HeroSnapshot({
         ))}
       </div>
     </div>
+  );
+}
+
+function FooterBar({
+  overview,
+  timeZone
+}: {
+  overview: OverviewResponse | null;
+  timeZone: string;
+}) {
+  const indexedLabel = overview ? formatDateTime(overview.lastIndexedAt) : "Loading local history...";
+
+  return (
+    <footer className="panel-muted flex flex-col gap-3 px-5 py-4 text-sm text-stone-600 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
+      <p className="font-medium text-stone-700">Copyright Max Stoddard 2026</p>
+      <div className="text-left lg:text-right">
+        <p className="font-medium text-stone-700">Last indexed {indexedLabel}</p>
+        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-stone-500">Browser timezone {timeZone}</p>
+      </div>
+    </footer>
   );
 }
 
@@ -209,7 +226,7 @@ export function HomeView({
           </div>
         </div>
 
-        <HeroSnapshot overview={overview} timeZone={timeZone} />
+        <HeroSnapshot overview={overview} />
       </section>
 
       {error ? <AlertBanner title="Failed to load dashboard data">{error}</AlertBanner> : null}
@@ -222,7 +239,7 @@ export function HomeView({
         <LoadingDashboard />
       ) : (
         <>
-          <section className="grid gap-4 lg:grid-cols-12">
+          <section className="grid gap-4 lg:grid-cols-8">
             <MetricCard
               eyebrow="Total water used"
               title="Estimated litres"
@@ -241,15 +258,6 @@ export function HomeView({
               )} excluded · ${formatNumber(overview.tokenTotals.unestimatedTokens)} unestimated`}
               footer={<span>Water totals exclude unsupported and token-only events</span>}
               className="lg:col-span-3"
-            />
-            <MetricCard
-              eyebrow="Coverage snapshot"
-              title="Last indexed"
-              value={formatDateTime(overview.lastIndexedAt)}
-              detail={`${formatNumber(overview.coverage.supportedEvents)} supported events with pricing coverage`}
-              footer={<span>Browser timezone: {timeZone}</span>}
-              size="compact"
-              className="lg:col-span-4"
             />
           </section>
 
@@ -271,6 +279,8 @@ export function HomeView({
           <CoverageSummary overview={overview} onOpenMethodology={onOpenMethodology} />
         </>
       )}
+
+      <FooterBar overview={overview} timeZone={timeZone} />
     </div>
   );
 }
