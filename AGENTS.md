@@ -8,3 +8,4 @@
   - Do not add what: or why: to git message.
   - Ensure commits are small changes, not big commits.
 - All changes must align with this repo being an `npx` package accessible via `npx ai-water-usage`
+  - You must ensure Windows/Linux/MacOS compatibility
