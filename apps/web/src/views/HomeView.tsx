@@ -90,14 +90,12 @@ function ComingSoonCard({
 export function HomeView({ error, loading, overview, timeZone, onOpenMethodology }: HomeViewProps) {
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
-      <section className="panel-shell relative overflow-hidden px-6 py-6 sm:px-8 sm:py-8">
-        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.12),transparent_58%)]" />
-        <div className="relative">
-          <div className="micro-pill">Overview</div>
-          <h1 className="mt-6 text-4xl font-semibold tracking-[-0.06em] text-stone-950 sm:text-5xl">
+      <section className="px-6 py-12 sm:px-8 sm:py-16">
+        <div className="mx-auto max-w-2xl text-center">
+          <h1 className="text-4xl font-semibold tracking-[-0.06em] text-stone-950 sm:text-5xl">
             See your coding-agent usage at a glance
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600">
+          <p className="mt-5 text-base leading-7 text-stone-600">
             Track the local usage signals Agentic Insights can read today, starting with water estimates and clear placeholders
             for the broader footprint views planned next.
           </p>
