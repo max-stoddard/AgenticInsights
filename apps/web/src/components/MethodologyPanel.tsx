@@ -9,10 +9,10 @@ export function MethodologyPanel({ methodology }: MethodologyPanelProps) {
   return (
     <section className="panel-shell px-6 py-6 sm:px-8 sm:py-8">
       <p className="section-kicker">Methodology</p>
-      <h2 className="mt-3 section-heading">How tokens become water</h2>
+      <h2 className="mt-3 section-heading">How local usage becomes a water estimate</h2>
       <p className="mt-4 section-copy">
-        Token extraction comes directly from local Codex logs. Water is inferred indirectly from official OpenAI price ratios,
-        calibrated against the median supported local event, and scaled through fixed benchmark coefficients.
+        Token extraction comes directly from local usage history the app can read. Water is inferred indirectly from official
+        price ratios, calibrated against the median supported local event, and scaled through fixed benchmark coefficients.
       </p>
 
       <div className="mt-8 grid gap-3">

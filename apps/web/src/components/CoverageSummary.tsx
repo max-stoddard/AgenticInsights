@@ -14,9 +14,9 @@ export function CoverageSummary({ overview, onOpenMethodology }: CoverageSummary
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-2xl">
           <p className="section-kicker">Coverage</p>
-          <h2 className="mt-3 section-heading">What counts toward your water estimate</h2>
+          <h2 className="mt-3 section-heading">What counts toward this estimate</h2>
           <p className="mt-3 section-copy">
-            Supported OpenAI events are priced and converted into litres. Unsupported providers, models, and fallback-only
+            Supported priced events are converted into litres. Unsupported providers, unsupported models, and fallback-only
             token totals stay visible but remain outside the estimate.
           </p>
         </div>
@@ -42,7 +42,7 @@ export function CoverageSummary({ overview, onOpenMethodology }: CoverageSummary
           <p className="mt-2 text-[1.75rem] font-semibold tracking-[-0.05em] text-stone-950">
             {formatNumber(overview.coverage.excludedEvents)}
           </p>
-          <p className="mt-1 text-sm text-stone-600">events omitted from litres</p>
+          <p className="mt-1 text-sm text-stone-600">events outside the current estimate</p>
         </div>
         <div className="panel-muted p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Token only</p>

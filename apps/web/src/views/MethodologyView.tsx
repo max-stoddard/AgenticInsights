@@ -31,11 +31,11 @@ export function MethodologyView({ error, loading, methodology, overview }: Metho
           <div className="micro-pill">Methodology</div>
           <p className="mt-8 section-kicker">How this estimate is built</p>
           <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-[-0.06em] text-stone-950 sm:text-5xl">
-            Pricing-weighted water estimation from local Codex logs
+            How local usage is turned into the current water estimate
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600">
             This view explains what is included, what is excluded, and how local token activity is normalized into a low,
-            central, and high water estimate.
+            central, and high water estimate using the current pricing-weighted method.
           </p>
         </div>
       </section>

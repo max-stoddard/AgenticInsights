@@ -19,8 +19,8 @@ export function CoverageDetailsPanel({ overview }: CoverageDetailsPanelProps) {
       </div>
 
       <p className="mt-4 section-copy">
-        Water totals only include supported OpenAI events with pricing coverage and split token data. The counts below keep
-        unsupported providers and fallback-only sessions explicit.
+        Water totals only include supported priced events with split token data. The counts below keep unsupported providers,
+        unsupported models, and fallback-only sessions explicit.
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -36,7 +36,7 @@ export function CoverageDetailsPanel({ overview }: CoverageDetailsPanelProps) {
           <p className="mt-2 text-[1.9rem] font-semibold tracking-[-0.05em] text-stone-950">
             {formatNumber(overview.coverage.excludedEvents)}
           </p>
-          <p className="mt-1 text-sm text-stone-600">unsupported providers or models</p>
+          <p className="mt-1 text-sm text-stone-600">outside supported pricing coverage</p>
         </div>
         <div className="panel-muted p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Token-only events</p>
