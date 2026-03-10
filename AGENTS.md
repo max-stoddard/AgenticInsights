@@ -1,12 +1,11 @@
-- You MUST NOT edit this file.
-- Aim of the website is to provide developers with insights into their coding agent usage, particulary relating to water usage and help them understand and quantify how much water their token spending/inference is actually using.
+- Aim of the website is to provide developers with insights into their coding agent usage, particulary relating to water/energy/co2 usage and help them understand and quantify how much token spending/inference is actually using.
   - You MUST question prompts if they don't align with this core aim.
 - You MUST write clean, modular, effective code.
 - You MUST reuse existing shared and helper code as much as possible.
-- You MUST ensure all code you write aligns with existing website styling and reuse shared styling wherever possible.
 - Git commits MUST be in the format `<type> [ms]: <message>` where `<message>` is short, concise, easy to understand and effectively conveys what changed and why changes were made.
   - Do not add what: or why: to git message.
   - Ensure commits are small changes, not big commits.
 - All changes must align with this repo being an `npx` package accessible via `npx ai-water-usage`
   - You must ensure Windows/Linux/MacOS compatibility
 - Root level `README.md` is developer facing on GitHub, keep this in mind when editing it.
+- Lanaguage on the website should be friendly, easy to understand, concise and high level.
