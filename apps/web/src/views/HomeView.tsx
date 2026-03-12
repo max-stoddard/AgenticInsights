@@ -17,12 +17,11 @@ interface HomeViewProps {
 function LoadingOverviewHub() {
   return (
     <section className="space-y-4" aria-label="Loading dashboard">
-      <SkeletonBlock className="h-48" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SkeletonBlock className="h-52" />
-        <SkeletonBlock className="h-40" />
-        <SkeletonBlock className="h-40" />
-        <SkeletonBlock className="h-40" />
+      <SkeletonBlock className="h-52" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SkeletonBlock className="h-24" />
+        <SkeletonBlock className="h-24" />
+        <SkeletonBlock className="h-24" />
       </div>
     </section>
   );
@@ -39,24 +38,24 @@ function WaterSummaryCard({
 
   return (
     <MetricCard
-      eyebrow="Current water estimate"
-      title="Estimated litres"
+      eyebrow="Water"
+      title="Est. water usage"
       value={ready ? formatLitres(overview.waterLitres.central) : "Waiting for data"}
       detail={
         ready
           ? `Range ${formatLitres(overview.waterLitres.low)} to ${formatLitres(overview.waterLitres.high)}`
-          : "Water estimates appear here once readable local activity is available."
+          : "Estimates appear once local activity is available."
       }
       footer={
         <div className="flex h-full flex-col gap-4">
           <span>
             {ready
-              ? `${formatNumber(overview.coverage.supportedEvents)} supported events currently contribute to water.`
-              : "Water is the only live metric in this version of the dashboard."}
+              ? `Based on ${formatNumber(overview.coverage.supportedEvents)} events`
+              : "Water estimates are live. More metrics coming soon."}
           </span>
           <button
             type="button"
-            className="micro-pill w-fit justify-center text-left text-zinc-700 transition-colors hover:bg-cyan-50 hover:text-cyan-800"
+            className="micro-pill w-fit justify-center text-left text-[#6B6560] transition-colors hover:bg-[#5B8C7E]/10 hover:text-[#4A7A6C]"
             onClick={onOpenMethodology}
           >
             Open methodology
@@ -79,10 +78,10 @@ function ComingSoonCard({
   description: string;
 }) {
   return (
-    <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-5 py-5 opacity-60 sm:px-6 sm:py-6">
+    <section className="rounded-lg border border-dashed border-[#E8E4DF] bg-[#FAF9F7] px-4 py-3 opacity-55 sm:px-5 sm:py-4">
       <p className="section-kicker">{eyebrow}</p>
-      <h2 className="mt-3 section-heading">{title}</h2>
-      <p className="mt-3 section-copy">{description}</p>
+      <h2 className="mt-2 text-base font-semibold tracking-[-0.02em] text-zinc-900">{title}</h2>
+      <p className="mt-1.5 text-xs leading-relaxed text-[#6B6560]">{description}</p>
     </section>
   );
 }
@@ -90,14 +89,13 @@ function ComingSoonCard({
 export function HomeView({ error, loading, overview, timeZone, onOpenMethodology }: HomeViewProps) {
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
-      <section className="px-6 py-6 sm:px-8 sm:py-8">
+      <section className="hero-glow px-6 py-4 sm:px-8 sm:py-5">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-2xl font-semibold tracking-[-0.06em] text-zinc-900 sm:text-3xl">
-            See your coding-agent usage at a glance
+            Your agent footprint, locally.
           </h1>
-          <p className="mt-5 text-base leading-7 text-zinc-500">
-            Track the local usage signals Agentic Insights can read today, starting with water estimates and clear placeholders
-            for the broader footprint views planned next.
+          <p className="mt-4 text-base leading-7 text-[#6B6560]">
+            Water estimates from your coding agent activity. Energy and CO2 coming soon.
           </p>
         </div>
       </section>
@@ -109,24 +107,26 @@ export function HomeView({ error, loading, overview, timeZone, onOpenMethodology
       ) : overview.diagnostics.state !== "ready" ? (
         <DataStatusPanel diagnostics={overview.diagnostics} />
       ) : (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="flex flex-col gap-4">
           <WaterSummaryCard overview={overview} onOpenMethodology={onOpenMethodology} />
-          <ComingSoonCard
-            eyebrow="Prompts"
-            title="Prompt insights"
-            description="Review prompt-level patterns, attribution, and cost context in a dedicated view."
-          />
-          <ComingSoonCard
-            eyebrow="Energy"
-            title="Energy estimates"
-            description="Track energy usage alongside tokens and supported activity once those estimates are available."
-          />
-          <ComingSoonCard
-            eyebrow="CO2"
-            title="CO2 estimates"
-            description="Add carbon estimates to the same local workflow without changing how you inspect activity."
-          />
-        </section>
+          <section className="grid gap-3 sm:grid-cols-3">
+            <ComingSoonCard
+              eyebrow="Prompts"
+              title="Prompt insights"
+              description="Prompt patterns and cost breakdown."
+            />
+            <ComingSoonCard
+              eyebrow="Energy"
+              title="Energy estimates"
+              description="Energy usage per session."
+            />
+            <ComingSoonCard
+              eyebrow="CO2"
+              title="CO2 estimates"
+              description="Carbon footprint estimates."
+            />
+          </section>
+        </div>
       )}
 
       <DashboardFooter lastIndexedAt={overview?.lastIndexedAt ?? null} timeZone={timeZone} />

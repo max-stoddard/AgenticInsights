@@ -81,7 +81,7 @@ export function MethodologyPanel({ methodology }: MethodologyPanelProps) {
             href={link.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center rounded-md bg-zinc-100 px-3 py-1.5 text-sm text-zinc-700 no-underline transition-colors hover:bg-cyan-50 hover:text-cyan-800"
+            className="inline-flex items-center rounded-md bg-[#F0EDEA] px-3 py-1.5 text-sm text-[#6B6560] no-underline transition-colors hover:bg-[#5B8C7E]/10 hover:text-[#4A7A6C]"
           >
             {link.label}
           </a>

@@ -34,37 +34,37 @@ const NAV_ITEMS: Array<{
     view: "home",
     hash: "#home",
     label: "Home",
-    description: "A compact overview of your local coding-agent usage and available estimate views."
+    description: "Overview of your agent footprint."
   },
   {
     view: "prompts",
     hash: "#prompts",
     label: "Prompts",
-    description: "Prompt-level analysis and attribution will live here once prompt data is surfaced."
+    description: "Prompt patterns and cost breakdown — coming soon."
   },
   {
     view: "water",
     hash: "#water",
     label: "Water",
-    description: "Explore the current water estimate, trend, and estimate coverage."
+    description: "Water usage estimates and trends."
   },
   {
     view: "energy",
     hash: "#energy",
     label: "Energy",
-    description: "Energy estimates will join the same local workflow once that data is available."
+    description: "Energy estimates — coming soon."
   },
   {
     view: "co2",
     hash: "#co2",
     label: "CO2",
-    description: "CO2 estimates will appear here alongside the rest of the footprint views."
+    description: "Carbon estimates — coming soon."
   },
   {
     view: "methodology",
     hash: "#methodology",
     label: "Methodology",
-    description: "Review the assumptions, coverage rules, and pricing references behind the current estimates."
+    description: "How we calculate estimates."
   }
 ];
 
@@ -252,7 +252,7 @@ export default function App() {
       <div className="mx-auto max-w-7xl">
         <LocalBanner />
         <div className="app-frame">
-          <header className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+          <header className="border-b border-[#E8E4DF] px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <a
                 href="#home"
@@ -276,7 +276,7 @@ export default function App() {
                       key={item.view}
                       href={item.hash}
                       aria-current={isActive ? "page" : undefined}
-                      className={isActive ? "nav-link nav-link-active border-b-2 border-cyan-500" : "nav-link"}
+                      className={isActive ? "nav-link nav-link-active border-b-2 border-[#5B8C7E]" : "nav-link"}
                       onClick={(event) => {
                         event.preventDefault();
                         navigateTo(item.view);

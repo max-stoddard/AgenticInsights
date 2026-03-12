@@ -52,7 +52,7 @@ export function CoverageDetailsPanel({ overview }: CoverageDetailsPanelProps) {
           {overview.exclusions.map((item) => (
             <div key={`${item.provider}:${item.model}`} className="panel-muted px-4 py-4">
               <div className="flex items-start gap-4">
-                <div className="mt-1 h-10 w-1 rounded-full bg-cyan-400" />
+                <div className="mt-1 h-10 w-1 rounded-full bg-[#5B8C7E]" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-900">
                     {item.provider} / {item.model}
@@ -80,7 +80,7 @@ export function CoverageDetailsPanel({ overview }: CoverageDetailsPanelProps) {
           ) : null}
         </div>
       ) : (
-        <div className="mt-6 rounded-lg border border-cyan-100 bg-cyan-50 px-4 py-4 text-sm leading-6 text-zinc-700">
+        <div className="mt-6 rounded-lg border border-[#5B8C7E]/20 bg-[#5B8C7E]/5 px-4 py-4 text-sm leading-6 text-zinc-700">
           Everything parsed so far has pricing coverage and split-token data.
         </div>
       )}

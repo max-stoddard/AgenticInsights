@@ -14,11 +14,11 @@
   }
 
   html {
-    @apply bg-[#fafafa] text-zinc-900 antialiased;
+    @apply bg-[#FAF9F7] text-zinc-900 antialiased;
   }
 
   body {
-    @apply m-0 min-h-screen bg-[#fafafa] text-zinc-900;
+    @apply m-0 min-h-screen bg-[#FAF9F7] text-zinc-900;
   }
 
   body,
@@ -38,7 +38,7 @@
   }
 
   a {
-    @apply text-cyan-600 underline-offset-4 transition-colors hover:text-cyan-700;
+    @apply text-[#4A7A6C] underline-offset-4 transition-colors hover:text-[#3D6559];
   }
 
   #root {
@@ -48,11 +48,11 @@
 
 @layer components {
   .app-frame {
-    @apply relative overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm;
+    @apply relative overflow-hidden rounded-xl border border-[#E8E4DF] bg-white shadow-sm;
   }
 
   .panel-shell {
-    @apply rounded-lg border border-zinc-200 bg-white;
+    @apply rounded-lg border border-[#E8E4DF] bg-white;
   }
 
   .panel-muted {
@@ -60,7 +60,7 @@
   }
 
   .section-kicker {
-    @apply text-[0.7rem] font-medium uppercase tracking-[0.12em] text-zinc-400;
+    @apply text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#5B8C7E];
   }
 
   .section-heading {
@@ -68,11 +68,11 @@
   }
 
   .section-copy {
-    @apply text-sm leading-relaxed text-zinc-500;
+    @apply text-sm leading-relaxed text-[#6B6560];
   }
 
   .micro-pill {
-    @apply inline-flex items-center rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-500;
+    @apply inline-flex items-center rounded-md bg-[#F0EDEA] px-2 py-1 text-xs font-medium text-[#6B6560];
   }
 
   .brand-lockup {
@@ -80,15 +80,19 @@
   }
 
   .brand-mark-shell {
-    @apply flex h-8 w-8 items-center justify-center rounded-md bg-zinc-100;
+    @apply flex h-8 w-8 items-center justify-center rounded-md bg-[#F0EDEA];
   }
 
   .hero-agent-badge {
-    @apply flex h-12 w-12 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-100;
+    @apply flex h-12 w-12 items-center justify-center rounded-lg border border-[#E8E4DF] bg-[#F0EDEA];
+  }
+
+  .hero-glow {
+    background: radial-gradient(ellipse at 50% 0%, rgba(91, 140, 126, 0.06) 0%, transparent 70%);
   }
 
   .nav-link {
-    @apply px-3 py-1.5 text-sm font-medium text-zinc-500 no-underline transition-colors hover:text-zinc-900;
+    @apply px-3 py-1.5 text-sm font-medium text-[#6B6560] no-underline transition-colors hover:text-zinc-900;
   }
 
   .nav-link-active {

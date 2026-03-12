@@ -33,8 +33,8 @@ export function MetricCard({
       className={joinClasses(
         "flex h-full flex-col rounded-lg border px-5 py-5 sm:px-6 sm:py-6",
         featured
-          ? "border-zinc-800 bg-zinc-900 text-zinc-50"
-          : "border-zinc-200 bg-white text-zinc-900",
+          ? "border-[#2A2A28] bg-[#1C1C1A] text-zinc-50"
+          : "border-[#E8E4DF] bg-white text-zinc-900",
         className
       )}
     >
@@ -42,12 +42,12 @@ export function MetricCard({
         <p
           className={joinClasses(
             "text-[0.68rem] font-semibold uppercase tracking-[0.22em]",
-            featured ? "text-cyan-200" : "text-zinc-500"
+            featured ? "text-[#8FBCAE]" : "text-[#6B6560]"
           )}
         >
           {eyebrow}
         </p>
-        <p className={joinClasses("mt-3 text-base font-medium", featured ? "text-zinc-300" : "text-zinc-700")}>
+        <p className={joinClasses("mt-3 text-base font-medium", featured ? "text-zinc-300" : "text-[#6B6560]")}>
           {title}
         </p>
       </div>
@@ -70,7 +70,7 @@ export function MetricCard({
         <div
           className={joinClasses(
             "mt-auto pt-6 text-sm",
-            featured ? "border-t border-white/10 text-zinc-400" : "border-t border-zinc-200 text-zinc-600"
+            featured ? "border-t border-white/10 text-zinc-400" : "border-t border-[#E8E4DF] text-[#6B6560]"
           )}
         >
           {footer}

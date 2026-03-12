@@ -176,11 +176,11 @@ export function WaterChart({ points }: WaterChartProps) {
                     strokeWidth="0.5"
                   />
                 ))}
-                <path d={areaPath} fill="rgba(34, 211, 238, 0.12)" />
+                <path d={areaPath} fill="rgba(91, 140, 126, 0.12)" />
                 <polyline
                   points={polyline}
                   fill="none"
-                  stroke="rgb(14 165 233)"
+                  stroke="rgb(91 140 126)"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
@@ -189,7 +189,7 @@ export function WaterChart({ points }: WaterChartProps) {
                   const active = index === activeIndex;
                   return (
                     <g key={`${point.label}:${index}`}>
-                      <circle cx={point.x} cy={point.y} r={active ? "3.2" : "2.2"} fill="rgb(14 165 233)" />
+                      <circle cx={point.x} cy={point.y} r={active ? "3.2" : "2.2"} fill="rgb(91 140 126)" />
                       <circle cx={point.x} cy={point.y} r="1.1" fill="white" />
                     </g>
                   );
@@ -201,8 +201,8 @@ export function WaterChart({ points }: WaterChartProps) {
                   key={`${point.label}:button`}
                   type="button"
                   aria-label={`${point.label}: ${formatLitres(point.central)}`}
-                  className={`absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-cyan-500/0 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300 ${
-                    index === activeIndex ? "shadow-[0_0_0_4px_rgba(34,211,238,0.18)]" : ""
+                  className={`absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#5B8C7E]/0 outline-none transition focus-visible:ring-2 focus-visible:ring-[#5B8C7E]/40 ${
+                    index === activeIndex ? "shadow-[0_0_0_4px_rgba(91,140,126,0.18)]" : ""
                   }`}
                   style={{
                     left: `${point.x}%`,

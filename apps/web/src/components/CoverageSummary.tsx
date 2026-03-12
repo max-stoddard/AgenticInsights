@@ -22,7 +22,7 @@ export function CoverageSummary({ overview, onOpenMethodology }: CoverageSummary
         </div>
         <button
           type="button"
-          className="micro-pill justify-center text-left text-zinc-700 transition-colors hover:bg-cyan-50 hover:text-cyan-800"
+          className="micro-pill justify-center text-left text-[#6B6560] transition-colors hover:bg-[#5B8C7E]/10 hover:text-[#4A7A6C]"
           onClick={onOpenMethodology}
         >
           View exclusions and pricing
