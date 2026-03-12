@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TimeseriesPoint } from "@agentic-insights/shared";
-import { formatLitres, formatNumber } from "../lib/format";
+import { formatLitres } from "../lib/format";
+import { ChartTooltip } from "./ChartTooltip";
 
 interface WaterChartProps {
   points: TimeseriesPoint[];
@@ -89,11 +90,13 @@ function buildChartPoints(points: TimeseriesPoint[]): ChartPoint[] {
 
 export function WaterChart({ points }: WaterChartProps) {
   const chartPoints = useMemo(() => buildChartPoints(points), [points]);
-  const latestPoint = chartPoints.length > 0 ? chartPoints[chartPoints.length - 1] : null;
+  const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState<number>(chartPoints.length > 0 ? chartPoints.length - 1 : -1);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
     setActiveIndex(chartPoints.length > 0 ? chartPoints.length - 1 : -1);
+    setShowTooltip(false);
   }, [chartPoints]);
 
   const activePoint = activeIndex >= 0 ? chartPoints[activeIndex] ?? null : null;
@@ -101,144 +104,134 @@ export function WaterChart({ points }: WaterChartProps) {
   const areaPath = chartPoints.length > 0 ? buildArea(chartPoints) : "";
   const axisLabels = getAxisLabels(chartPoints);
 
+  const getPixelPosition = useCallback(
+    (point: ChartPoint) => {
+      if (!containerRef.current) return { px: 0, py: 0 };
+      const rect = containerRef.current.getBoundingClientRect();
+      return {
+        px: (point.x / CHART_WIDTH) * rect.width,
+        py: (point.y / CHART_HEIGHT) * rect.height
+      };
+    },
+    []
+  );
+
+  if (chartPoints.length === 0) {
+    return (
+      <div className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-ink-secondary">
+        No water estimate available for this time range.
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-8">
-      {latestPoint ? (
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <div className="panel-muted p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Latest central</p>
-            <p className="mt-2 text-xl font-semibold tracking-[-0.04em] text-zinc-900">
-              {formatLitres(latestPoint.central)}
-            </p>
-          </div>
-          <div className="panel-muted p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Current range</p>
-            <p className="mt-2 text-xl font-semibold tracking-[-0.04em] text-zinc-900">
-              {formatLitres(latestPoint.low)} to {formatLitres(latestPoint.high)}
-            </p>
-          </div>
-          <div className="panel-muted p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Latest tokens</p>
-            <p className="mt-2 text-xl font-semibold tracking-[-0.04em] text-zinc-900">
-              {formatNumber(latestPoint.tokens)}
-            </p>
-          </div>
-        </div>
-      ) : null}
+    <div className="mt-6">
+      <div
+        ref={containerRef}
+        className="relative h-72 sm:h-80"
+        onMouseLeave={() => {
+          setShowTooltip(false);
+          setActiveIndex(chartPoints.length - 1);
+        }}
+      >
+        <svg
+          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+          className="h-full w-full"
+          role="img"
+          aria-label="Water usage trend"
+        >
+          <defs>
+            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(14,165,233,0.15)" />
+              <stop offset="100%" stopColor="rgba(14,165,233,0)" />
+            </linearGradient>
+          </defs>
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 sm:p-6">
-        {activePoint ? (
-          <div className="flex flex-col gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">{activePoint.label}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-zinc-900">
-                {formatLitres(activePoint.central)}
-              </p>
-              <p className="mt-1 text-sm leading-6 text-zinc-500">
-                Range {formatLitres(activePoint.low)} to {formatLitres(activePoint.high)}
-              </p>
-            </div>
-            <div className="text-sm leading-6 text-zinc-600">
-              <p>{formatNumber(activePoint.tokens)} tokens</p>
-              {(activePoint.excludedTokens > 0 || activePoint.unestimatedTokens > 0) && (
-                <p className="text-zinc-500">
-                  {activePoint.excludedTokens > 0 ? `${formatNumber(activePoint.excludedTokens)} excluded` : ""}
-                  {activePoint.excludedTokens > 0 && activePoint.unestimatedTokens > 0 ? " · " : ""}
-                  {activePoint.unestimatedTokens > 0 ? `${formatNumber(activePoint.unestimatedTokens)} unestimated` : ""}
-                </p>
-              )}
-            </div>
-          </div>
+          {buildGridLines().map((lineY) => (
+            <line
+              key={lineY}
+              x1={CHART_PADDING_X}
+              y1={lineY}
+              x2={CHART_WIDTH - CHART_PADDING_X}
+              y2={lineY}
+              stroke="#F1F5F9"
+              strokeWidth="0.3"
+            />
+          ))}
+
+          <path d={areaPath} fill="url(#chartGradient)" />
+
+          <polyline
+            points={polyline}
+            fill="none"
+            stroke="#0EA5E9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.5"
+          />
+
+          {chartPoints.map((point, index) => {
+            const active = index === activeIndex;
+            return (
+              <g key={`${point.label}:${index}`}>
+                {active ? (
+                  <>
+                    <circle cx={point.x} cy={point.y} r="4" fill="white" stroke="#0EA5E9" strokeWidth="2" />
+                  </>
+                ) : (
+                  <circle cx={point.x} cy={point.y} r="2.2" fill="#0EA5E9" />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {chartPoints.map((point, index) => (
+          <button
+            key={`${point.label}:button`}
+            type="button"
+            aria-label={`${point.label}: ${formatLitres(point.central)}`}
+            className={`absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-accent/40 ${
+              index === activeIndex ? "shadow-[0_0_0_4px_rgba(14,165,233,0.18)]" : ""
+            }`}
+            style={{
+              left: `${point.x}%`,
+              top: `${(point.y / CHART_HEIGHT) * 100}%`
+            }}
+            onMouseEnter={() => {
+              setActiveIndex(index);
+              setShowTooltip(true);
+            }}
+            onFocus={() => {
+              setActiveIndex(index);
+              setShowTooltip(true);
+            }}
+          >
+            <span className="sr-only">
+              {point.label}: {formatLitres(point.central)}
+            </span>
+          </button>
+        ))}
+
+        {showTooltip && activePoint ? (
+          <ChartTooltip
+            label={activePoint.label}
+            central={activePoint.central}
+            low={activePoint.low}
+            high={activePoint.high}
+            tokens={activePoint.tokens}
+            x={getPixelPosition(activePoint).px}
+            y={getPixelPosition(activePoint).py}
+            containerWidth={containerRef.current?.getBoundingClientRect().width ?? 0}
+          />
         ) : null}
-
-        {chartPoints.length > 0 ? (
-          <>
-            <div
-              className="relative mt-5 h-72 rounded-lg border border-zinc-200 bg-white"
-              onMouseLeave={() => {
-                setActiveIndex(chartPoints.length - 1);
-              }}
-            >
-              <svg
-                viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-                className="h-full w-full"
-                role="img"
-                aria-label="Water usage trend"
-              >
-                {buildGridLines().map((lineY) => (
-                  <line
-                    key={lineY}
-                    x1={CHART_PADDING_X}
-                    y1={lineY}
-                    x2={CHART_WIDTH - CHART_PADDING_X}
-                    y2={lineY}
-                    stroke="rgb(228 228 231)"
-                    strokeWidth="0.5"
-                  />
-                ))}
-                <path d={areaPath} fill="rgba(91, 140, 126, 0.12)" />
-                <polyline
-                  points={polyline}
-                  fill="none"
-                  stroke="rgb(91 140 126)"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                />
-                {chartPoints.map((point, index) => {
-                  const active = index === activeIndex;
-                  return (
-                    <g key={`${point.label}:${index}`}>
-                      <circle cx={point.x} cy={point.y} r={active ? "3.2" : "2.2"} fill="rgb(91 140 126)" />
-                      <circle cx={point.x} cy={point.y} r="1.1" fill="white" />
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {chartPoints.map((point, index) => (
-                <button
-                  key={`${point.label}:button`}
-                  type="button"
-                  aria-label={`${point.label}: ${formatLitres(point.central)}`}
-                  className={`absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#5B8C7E]/0 outline-none transition focus-visible:ring-2 focus-visible:ring-[#5B8C7E]/40 ${
-                    index === activeIndex ? "shadow-[0_0_0_4px_rgba(91,140,126,0.18)]" : ""
-                  }`}
-                  style={{
-                    left: `${point.x}%`,
-                    top: `${(point.y / CHART_HEIGHT) * 100}%`
-                  }}
-                  onMouseEnter={() => {
-                    setActiveIndex(index);
-                  }}
-                  onFocus={() => {
-                    setActiveIndex(index);
-                  }}
-                >
-                  <span className="sr-only">
-                    {point.label}: {formatLitres(point.central)}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-zinc-500">
-              {axisLabels.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="mt-5 rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-10 text-sm leading-6 text-zinc-500">
-            No water estimate available for this bucket.
-          </div>
-        )}
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-zinc-500">
-        The chart keeps the central estimate prominent while preserving the low-to-high range and non-estimated token counts
-        on every point.
-      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-ink-tertiary">
+        {axisLabels.map((label) => (
+          <span key={label}>{label}</span>
+        ))}
+      </div>
     </div>
   );
 }

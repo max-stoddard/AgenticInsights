@@ -6,8 +6,8 @@ interface MetricCardProps {
   value: string;
   detail: string;
   footer?: ReactNode;
+  aside?: ReactNode;
   tone?: "default" | "feature";
-  size?: "default" | "compact";
   className?: string;
 }
 
@@ -21,56 +21,56 @@ export function MetricCard({
   value,
   detail,
   footer,
+  aside,
   tone = "default",
-  size = "default",
   className
 }: MetricCardProps) {
   const featured = tone === "feature";
-  const compact = size === "compact";
 
   return (
     <article
       className={joinClasses(
-        "flex h-full flex-col rounded-lg border px-5 py-5 sm:px-6 sm:py-6",
-        featured
-          ? "border-[#2A2A28] bg-[#1C1C1A] text-zinc-50"
-          : "border-[#E8E4DF] bg-white text-zinc-900",
+        "flex flex-col rounded-xl p-6 sm:p-8",
+        featured ? "card-dark" : "card",
         className
       )}
     >
-      <div>
-        <p
-          className={joinClasses(
-            "text-[0.68rem] font-semibold uppercase tracking-[0.22em]",
-            featured ? "text-[#8FBCAE]" : "text-[#6B6560]"
-          )}
-        >
-          {eyebrow}
-        </p>
-        <p className={joinClasses("mt-3 text-base font-medium", featured ? "text-zinc-300" : "text-[#6B6560]")}>
-          {title}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p
+            className={joinClasses(
+              "text-sm font-medium",
+              featured ? "text-accent-light" : "text-ink-secondary"
+            )}
+          >
+            {eyebrow}
+          </p>
+          <p className={joinClasses("mt-1.5 text-sm", featured ? "text-slate-300" : "text-ink-secondary")}>
+            {title}
+          </p>
+        </div>
+        {aside ? <div className="flex-shrink-0">{aside}</div> : null}
       </div>
 
       <p
         className={joinClasses(
-          "mt-8 font-semibold tracking-[-0.06em]",
+          "mt-6 font-bold tracking-[-0.04em]",
           featured
-            ? "text-4xl text-white sm:text-5xl"
-            : compact
-              ? "text-[1.9rem] text-zinc-900"
-              : "text-[2.2rem] text-zinc-900 sm:text-4xl"
+            ? "text-4xl text-white sm:text-5xl lg:text-6xl"
+            : "text-3xl text-ink sm:text-4xl"
         )}
       >
         {value}
       </p>
-      <p className={joinClasses("mt-4 text-sm leading-6", featured ? "text-zinc-300" : "text-zinc-600")}>{detail}</p>
+      <p className={joinClasses("mt-3 text-[15px] leading-relaxed", featured ? "text-slate-300" : "text-ink-secondary")}>
+        {detail}
+      </p>
 
       {footer ? (
         <div
           className={joinClasses(
-            "mt-auto pt-6 text-sm",
-            featured ? "border-t border-white/10 text-zinc-400" : "border-t border-[#E8E4DF] text-[#6B6560]"
+            "mt-auto pt-5 text-sm",
+            featured ? "border-t border-white/10 text-slate-400" : "border-t border-slate-200/60 text-ink-secondary"
           )}
         >
           {footer}

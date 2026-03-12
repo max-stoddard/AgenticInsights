@@ -26,20 +26,25 @@ export function DataStatusPanel({ diagnostics }: DataStatusPanelProps) {
   const message = getSanitizedMessage(diagnostics.message);
 
   return (
-    <section className="panel-shell px-6 py-6 sm:px-8 sm:py-8">
+    <section className="card px-6 py-6 sm:px-8 sm:py-8">
       <div className="max-w-3xl">
-        <div className="micro-pill">{isNoData ? "Waiting for local history" : "Local read issue"}</div>
-        <h2 className="mt-4 section-heading">{title}</h2>
-        <p className="mt-4 text-base leading-7 text-zinc-500">{copy}</p>
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${isNoData ? "bg-amber-400" : "bg-rose-500"}`} />
+          <span className="text-sm font-medium text-ink-secondary">
+            {isNoData ? "Waiting for data" : "Read error"}
+          </span>
+        </div>
+        <h2 className="mt-3 text-base font-semibold text-ink">{title}</h2>
+        <p className="mt-3 text-[15px] leading-relaxed text-ink-secondary">{copy}</p>
       </div>
 
-      <div className="mt-6 panel-muted p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Current data path</p>
-        <code className="mt-3 block overflow-x-auto text-sm text-zinc-800">{diagnostics.codexHome}</code>
+      <div className="mt-5 rounded-lg bg-surface-muted p-4">
+        <p className="text-xs font-medium text-ink-tertiary">Current data path</p>
+        <code className="mt-2 block overflow-x-auto text-sm text-ink">{diagnostics.codexHome}</code>
       </div>
 
       {message ? (
-        <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-700">
+        <div className="mt-3 rounded-lg border border-slate-200/60 bg-surface-muted px-4 py-3 text-sm leading-relaxed text-ink-secondary">
           {message}
         </div>
       ) : null}

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 
@@ -162,56 +162,43 @@ afterEach(() => {
 });
 
 describe("App", () => {
-  it("loads the overview hub, keeps placeholder tabs lightweight, and defers water trend loading to the water tab", async () => {
+  it("loads the single-page dashboard with hero metric, chart, coverage, and roadmap", async () => {
     mockDashboardResponses();
 
     const { container } = render(<App />);
-    const primaryNav = screen.getByRole("navigation", { name: "Primary" });
 
-    expect(within(primaryNav).getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByLabelText("Loading dashboard")).toBeInTheDocument();
-
-    await screen.findByRole("heading", { name: /See your coding-agent usage at a glance/i });
     await waitFor(() => {
       expect(screen.getAllByText("1.20 L").length).toBeGreaterThan(0);
     });
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
 
-    expect(screen.queryByText(/What you can see today/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Estimated litres/i)).toBeInTheDocument();
+    expect(screen.getByText(/Water used/i)).toBeInTheDocument();
+    expect(screen.getByText(/Between 500.0 mL and 2.10 L/i)).toBeInTheDocument();
+    expect(screen.getByText(/From 9 coding sessions/i)).toBeInTheDocument();
+    expect(screen.getByText(/90% coverage/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/Usage over time/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Day" })).toHaveAttribute("aria-selected", "true");
+
+    expect(screen.getByText("supported")).toBeInTheDocument();
+    expect(screen.getByText("excluded")).toBeInTheDocument();
+
     expect(screen.getByText(/Prompt insights/i)).toBeInTheDocument();
     expect(screen.getByText(/Energy estimates/i)).toBeInTheDocument();
     expect(screen.getByText(/CO2 estimates/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Open methodology/i })).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalledWith("/api/methodology");
-    expect(screen.queryByText(/Water-weighted local estimate/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Track your water estimate/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Water usage by day/i)).not.toBeInTheDocument();
+
     expect(container.querySelectorAll('img[src="/agent.svg"]').length).toBeGreaterThan(0);
     expect(screen.getByText(/Copyright Max Stoddard 2026/i)).toBeInTheDocument();
     expect(screen.getByText(/Last indexed 9 Mar 2026/i)).toBeInTheDocument();
+  });
 
-    fireEvent.click(within(primaryNav).getByRole("link", { name: "Prompts" }));
-    expect(await screen.findByRole("heading", { name: /Prompt insights are coming next/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+  it("switches time bucket via the toggle and fetches new timeseries", async () => {
+    mockDashboardResponses();
 
-    fireEvent.click(within(primaryNav).getByRole("link", { name: "Energy" }));
-    expect(await screen.findByRole("heading", { name: /Energy estimates are on the roadmap/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    render(<App />);
 
-    fireEvent.click(within(primaryNav).getByRole("link", { name: "CO2" }));
-    expect(await screen.findByRole("heading", { name: /CO2 estimates are on the roadmap/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(within(primaryNav).getByRole("link", { name: "Water" }));
-    expect(await screen.findByRole("heading", { name: /Track your water estimate/i })).toBeInTheDocument();
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(screen.getAllByText("1.20 L").length).toBeGreaterThan(0);
     });
-    expect(screen.getByText(/Water usage by day/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /View exclusions and pricing/i })).toBeInTheDocument();
 
     const dayTab = screen.getByRole("tab", { name: "Day" });
     dayTab.focus();
@@ -223,48 +210,36 @@ describe("App", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=week"));
     });
-    expect(screen.getByText(/Water usage by week/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Month" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=month"));
     });
-    expect(await screen.findByText("No water estimate available for this bucket.")).toBeInTheDocument();
+    expect(await screen.findByText("No water estimate available for this time range.")).toBeInTheDocument();
+  });
 
-    fireEvent.click(within(primaryNav).getByRole("link", { name: "Methodology" }));
-    expect(await screen.findByRole("heading", { name: /How local usage is turned into the current water estimate/i })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: /How local usage becomes a water estimate/i })).toBeInTheDocument();
-    expect(screen.getByText(/50 tokens excluded because unsupported provider/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /CACM DOI: Making AI Less 'Thirsty' \(Li, Yang, Islam, Ren\)/i })
-    ).toHaveAttribute("href", "https://doi.org/10.1145/3724499");
+  it("opens the methodology drawer and shows pricing and sources", async () => {
+    mockDashboardResponses();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("1.20 L").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /How it works/i })[0]!);
+
+    expect(await screen.findByRole("dialog", { name: /How it works/i })).toBeInTheDocument();
+
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/api/methodology");
     });
-    expect(fetchMock).toHaveBeenCalledTimes(5);
 
-    fireEvent.click(within(primaryNav).getByRole("link", { name: "Home" }));
-    expect(await screen.findByRole("heading", { name: /See your coding-agent usage at a glance/i })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(5);
-  });
-
-  it("does not fetch dashboard data until a data-backed view is active", async () => {
-    mockDashboardResponses();
-    window.location.hash = "#prompts";
-
-    render(<App />);
-    const primaryNav = screen.getByRole("navigation", { name: "Primary" });
-
-    expect(screen.getByRole("heading", { name: /Prompt insights are coming next/i })).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    fireEvent.click(within(primaryNav).getByRole("link", { name: "Home" }));
-
-    await screen.findByLabelText("Loading dashboard");
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
+    expect(await screen.findByText(/gpt-5.3-codex/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /CACM DOI: Making AI Less 'Thirsty' \(Li, Yang, Islam, Ren\)/i })
+    ).toHaveAttribute("href", "https://doi.org/10.1145/3724499");
   });
 
   it("shows neutral onboarding guidance when no local usage history is available", async () => {
@@ -311,9 +286,7 @@ describe("App", () => {
     expect(screen.getByText(/No readable local usage history was found at the current path yet/i)).toBeInTheDocument();
     expect(screen.getByText("No usage files were found in this directory yet.")).toBeInTheDocument();
     expect(screen.getByText("/home/dev/.codex")).toBeInTheDocument();
-    expect(screen.queryByText(/agentic-insights --codex-home/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Water-weighted local estimate/i)).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Prompt insights/i)).toBeInTheDocument();
   });
 
   it("shows a neutral read error when the current local path cannot be read", async () => {
@@ -359,6 +332,5 @@ describe("App", () => {
     expect((await screen.findAllByText(/Could not read local usage data/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/The dashboard could not read the current local usage path/i)).toBeInTheDocument();
     expect(screen.getByText("Configured data path does not exist.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

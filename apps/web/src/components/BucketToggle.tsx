@@ -46,7 +46,7 @@ export function BucketToggle({ active, onChange }: BucketToggleProps) {
     <div
       role="tablist"
       aria-label="Water aggregation"
-      className="inline-flex w-full rounded-md border border-[#E8E4DF] bg-[#F0EDEA] p-1 sm:w-auto"
+      className="inline-flex w-full rounded-lg bg-surface-muted p-1 sm:w-auto"
     >
       {options.map((option, index) => {
         const selected = option.value === active;
@@ -61,8 +61,8 @@ export function BucketToggle({ active, onChange }: BucketToggleProps) {
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={
               selected
-                ? "min-w-[5.25rem] rounded-md bg-[#1C1C1A] px-4 py-2.5 text-sm font-semibold text-white transition"
-                : "min-w-[5.25rem] rounded-md px-4 py-2.5 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+                ? "min-w-[5.25rem] rounded-md bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm transition-all"
+                : "min-w-[5.25rem] rounded-md px-4 py-2 text-sm font-medium text-ink-secondary transition-all hover:text-ink"
             }
           >
             {option.label}

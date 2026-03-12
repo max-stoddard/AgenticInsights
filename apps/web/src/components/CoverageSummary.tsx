@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { OverviewResponse } from "@agentic-insights/shared";
 import { formatNumber } from "../lib/format";
 
@@ -7,57 +8,105 @@ interface CoverageSummaryProps {
 }
 
 export function CoverageSummary({ overview, onOpenMethodology }: CoverageSummaryProps) {
+  const [expanded, setExpanded] = useState(false);
   const hasExceptions = overview.exclusions.length > 0 || overview.tokenTotals.unestimatedTokens > 0;
 
   return (
-    <section className="panel-shell px-5 py-5 sm:px-6 sm:py-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="max-w-2xl">
-          <p className="section-kicker">Coverage</p>
-          <h2 className="mt-3 section-heading">What counts toward this estimate</h2>
-          <p className="mt-3 section-copy">
-            Supported priced events are converted into litres. Unsupported providers, unsupported models, and fallback-only
-            token totals stay visible but remain outside the estimate.
-          </p>
-        </div>
+    <section className="card px-6 py-5 sm:px-8 sm:py-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-base font-semibold text-ink">What's included</h2>
         <button
           type="button"
-          className="micro-pill justify-center text-left text-[#6B6560] transition-colors hover:bg-[#5B8C7E]/10 hover:text-[#4A7A6C]"
+          className="pill transition-colors hover:bg-accent-muted hover:text-accent-hover"
           onClick={onOpenMethodology}
         >
-          View exclusions and pricing
+          How it works
         </button>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="panel-muted p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Supported</p>
-          <p className="mt-2 text-[1.75rem] font-semibold tracking-[-0.05em] text-zinc-900">
+      <div className="mt-5 flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:gap-6">
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold tracking-[-0.03em] text-ink">
             {formatNumber(overview.coverage.supportedEvents)}
-          </p>
-          <p className="mt-1 text-sm text-zinc-500">events with pricing coverage</p>
+          </span>
+          <span className="text-ink-secondary">supported</span>
         </div>
-        <div className="panel-muted p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Excluded</p>
-          <p className="mt-2 text-[1.75rem] font-semibold tracking-[-0.05em] text-zinc-900">
+
+        <span className="hidden h-4 w-px bg-slate-200 sm:block" />
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold tracking-[-0.03em] text-ink">
             {formatNumber(overview.coverage.excludedEvents)}
-          </p>
-          <p className="mt-1 text-sm text-zinc-500">events outside the current estimate</p>
+          </span>
+          <span className="text-ink-secondary">excluded</span>
         </div>
-        <div className="panel-muted p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Token only</p>
-          <p className="mt-2 text-[1.75rem] font-semibold tracking-[-0.05em] text-zinc-900">
+
+        <span className="hidden h-4 w-px bg-slate-200 sm:block" />
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold tracking-[-0.03em] text-ink">
             {formatNumber(overview.coverage.tokenOnlyEvents)}
-          </p>
-          <p className="mt-1 text-sm text-zinc-500">sessions without split token data</p>
+          </span>
+          <span className="text-ink-secondary">token-only</span>
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-700">
-        {hasExceptions
-          ? `${formatNumber(overview.tokenTotals.excludedTokens + overview.tokenTotals.unestimatedTokens)} tokens remain visible outside the litres estimate.`
-          : "Everything parsed so far has pricing coverage and split-token data."}
-      </div>
+      {hasExceptions ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1.5 text-sm font-medium text-accent no-underline transition-colors hover:text-accent-hover"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
+            >
+              <path
+                fillRule="evenodd"
+                d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {expanded ? "Hide details" : `Show ${overview.exclusions.length + (overview.tokenTotals.unestimatedTokens > 0 ? 1 : 0)} details`}
+          </button>
+
+          {expanded ? (
+            <div className="mt-3 space-y-2">
+              {overview.exclusions.map((item) => (
+                <div key={`${item.provider}:${item.model}`} className="flex items-start gap-3 rounded-lg bg-surface-muted px-4 py-3">
+                  <div className="mt-0.5 h-8 w-1 flex-shrink-0 rounded-full bg-accent" />
+                  <div>
+                    <p className="text-sm font-medium text-ink">
+                      {item.provider} / {item.model}
+                    </p>
+                    <p className="mt-0.5 text-sm text-ink-secondary">
+                      {formatNumber(item.tokens)} tokens — {item.reason.toLowerCase()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {overview.tokenTotals.unestimatedTokens > 0 ? (
+                <div className="flex items-start gap-3 rounded-lg bg-surface-muted px-4 py-3">
+                  <div className="mt-0.5 h-8 w-1 flex-shrink-0 rounded-full bg-ink-tertiary" />
+                  <div>
+                    <p className="text-sm font-medium text-ink">Fallback-only sessions</p>
+                    <p className="mt-0.5 text-sm text-ink-secondary">
+                      {formatNumber(overview.tokenTotals.unestimatedTokens)} tokens without split data
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-ink-secondary">
+          All sessions have pricing coverage and split-token data.
+        </p>
+      )}
     </section>
   );
 }
