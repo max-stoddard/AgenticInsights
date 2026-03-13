@@ -1,6 +1,6 @@
 # Agentic Insights
 
-`agentic-insights` launches a local dashboard that reads your Codex usage artifacts and estimates the water impact of your coding-agent usage.
+`agentic-insights` launches a local dashboard that reads your Codex and Claude Code usage artifacts and estimates the water impact of your coding-agent usage.
 
 ## Run
 
@@ -33,8 +33,10 @@ By default the app reads local Codex artifacts from:
 - `~/.codex/sessions`
 - `~/.codex/archived_sessions`
 - `~/.codex/log/codex-tui.log`
+- `~/.claude/projects`
+- `~/.claude/usage-data/session-meta`
 
-Override that location with `--codex-home` or `CODEX_HOME=/path/to/.codex`.
+Override the Codex location with `--codex-home` or `CODEX_HOME=/path/to/.codex`. Claude Code usage is read from the default `~/.claude` home for the current user.
 
 ## Repository
 

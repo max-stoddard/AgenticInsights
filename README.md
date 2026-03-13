@@ -1,6 +1,6 @@
 # Agentic Insights
 
-Local TypeScript dashboard that reads Codex usage artifacts from your machine and estimates water usage from token activity.
+Local TypeScript dashboard that reads Codex and Claude Code usage artifacts from your machine and estimates water usage from token activity.
 
 ## Launch in one command
 
@@ -10,7 +10,7 @@ Requires Node `18+`.
 npx agentic-insights@latest
 ```
 
-That command starts a local server, opens the dashboard in your browser, and reads Codex usage from your own machine.
+That command starts a local server, opens the dashboard in your browser, and reads local coding-agent usage from your own machine.
 
 If you want a reusable command instead:
 
@@ -44,8 +44,10 @@ By default the backend reads:
 - `~/.codex/sessions`
 - `~/.codex/archived_sessions`
 - `~/.codex/log/codex-tui.log`
+- `~/.claude/projects`
+- `~/.claude/usage-data/session-meta`
 
-You can override the Codex home directory with `CODEX_HOME=/path/to/.codex` or `agentic-insights --codex-home /path/to/.codex`.
+You can override the Codex home directory with `CODEX_HOME=/path/to/.codex` or `agentic-insights --codex-home /path/to/.codex`. Claude Code usage is read from the default `~/.claude` home for the current user.
 
 ## What the dashboard shows
 
@@ -72,6 +74,8 @@ If `last_token_usage` is missing but `total_token_usage.{input,output,cached_inp
 
 If a session has no usable `total_token_usage` rows at all, the backend can still recover token totals from `codex-tui.log`, but those events are marked `token_only` because split token counts are unavailable.
 
+For Claude Code usage, the backend reads assistant message usage rows from `~/.claude/projects/*.jsonl` and converts those into per-message token events. If a Claude session has no usable per-message rows, the backend can fall back to `~/.claude/usage-data/session-meta/*.json` for a session-level summary event.
+
 ### 2. Tokens are converted into a cost-equivalent proxy
 
 The UI does not show USD, but the app uses official OpenAI model pricing as a stable weighting proxy for relative inference intensity [3-8].
@@ -97,7 +101,7 @@ Supported pricing table used in this app:
 
 ### 3. The app calibrates against your own local usage history
 
-Absolute litres per token are not observable from Codex logs.
+Absolute litres per token are not observable from local coding-agent logs.
 
 So the app creates a local reference event cost on first run:
 
