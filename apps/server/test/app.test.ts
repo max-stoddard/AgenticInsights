@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
 import { createCacheDir, createClaudeHome, createCodexHome, writeJsonFile, writeJsonlFile, writeTuiLog } from "./helpers.js";
 
@@ -203,6 +203,23 @@ describe("API routes", () => {
       prompts: 2,
       excludedModels: 2
     });
+    expect(overview.weeklyGrowth).toEqual({
+      sessions: {
+        current: 5,
+        previous: 0,
+        increase: 5
+      },
+      prompts: {
+        current: 2,
+        previous: 0,
+        increase: 2
+      },
+      tokens: {
+        current: 200,
+        previous: 0,
+        increase: 200
+      }
+    });
     expect(overview.modelUsage).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -310,5 +327,59 @@ describe("API routes", () => {
     codex.cleanup();
     claude.cleanup();
     cache.cleanup();
+  });
+
+  it("passes the requested time zone through the overview route", async () => {
+    const getOverview = vi.fn(() => ({
+      tokenTotals: {
+        totalTokens: 0,
+        supportedTokens: 0,
+        excludedTokens: 0,
+        unestimatedTokens: 0
+      },
+      waterLitres: {
+        low: 0,
+        central: 0,
+        high: 0
+      },
+      coverage: {
+        supportedEvents: 0,
+        excludedEvents: 0,
+        tokenOnlyEvents: 0
+      },
+      coverageSummary: {
+        sessions: 0,
+        prompts: 0,
+        excludedModels: 0
+      },
+      weeklyGrowth: {
+        sessions: { current: 0, previous: 0, increase: 0 },
+        prompts: { current: 0, previous: 0, increase: 0 },
+        tokens: { current: 0, previous: 0, increase: 0 }
+      },
+      modelUsage: [],
+      coverageDetails: [],
+      exclusions: [],
+      lastIndexedAt: null,
+      calibration: null,
+      diagnostics: {
+        state: "no_data",
+        codexHome: "/tmp/.codex",
+        message: null
+      }
+    }));
+    const service = {
+      getOverview,
+      getTimeseries: vi.fn(),
+      getMethodology: vi.fn()
+    } as never;
+
+    const app = createApp({ service });
+    const response = await app.inject({ method: "GET", url: "/api/overview?tz=America%2FLos_Angeles" });
+
+    expect(response.statusCode).toBe(200);
+    expect(getOverview).toHaveBeenCalledWith("America/Los_Angeles");
+
+    await app.close();
   });
 });

@@ -18,7 +18,10 @@ export function createApp(options: CreateAppOptions = {}) {
   const app = Fastify({ logger: false });
   void app.register(cors, { origin: true });
 
-  app.get("/api/overview", async () => service.getOverview());
+  app.get<{ Querystring: { tz?: string } }>("/api/overview", async (request) => {
+    const timeZone = request.query.tz || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    return service.getOverview(timeZone);
+  });
 
   app.get<{ Querystring: { bucket?: string; tz?: string } }>("/api/timeseries", async (request, reply) => {
     const bucket = request.query.bucket ?? "day";

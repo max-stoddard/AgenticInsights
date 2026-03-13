@@ -9,6 +9,8 @@ import type {
   OverviewResponse,
   TimeseriesPoint,
   TimeseriesResponse,
+  WeeklyGrowthMetric,
+  WeeklyGrowthSummary,
   WaterRange
 } from "@agentic-insights/shared";
 import { getOrCreateCalibration, buildSignature } from "./calibration.js";
@@ -17,6 +19,7 @@ import { getTuiLogPath, listClaudeProjectFiles, listClaudeSessionMetaFiles, list
 import { getCodexHomeConfig, getDefaultClaudeHome } from "./paths.js";
 import { parseSessionFile, parseSessionPrompts, parseTuiFallback } from "./parser.js";
 import { aggregateDayTimeseries, aggregateFromDayBuckets } from "./aggregation.js";
+import { getBucketStartTs, shiftZonedDateTimeByDays } from "./timezone.js";
 import {
   BENCHMARK_COEFFICIENTS,
   PRICING_CATALOG_METADATA,
@@ -292,6 +295,79 @@ function buildModelUsage(coverageDetails: CoverageDetailAggregate[]): ModelUsage
     });
 }
 
+function buildCoverageSummary(snapshot: DataSnapshot): OverviewResponse["coverageSummary"] {
+  return {
+    sessions: new Set([...snapshot.events.map((event) => event.sessionId), ...snapshot.promptRecords.map((prompt) => prompt.sessionId)]).size,
+    prompts: snapshot.promptRecords.length,
+    excludedModels: snapshot.coverageDetails.filter((item) => item.classification === "excluded").length
+  };
+}
+
+function buildWeeklyGrowthMetric(current: number, previous: number): WeeklyGrowthMetric {
+  return {
+    current,
+    previous,
+    increase: Math.max(current - previous, 0)
+  };
+}
+
+function isWithinWindow(ts: number, startTs: number, endTs: number): boolean {
+  return ts >= startTs && ts <= endTs;
+}
+
+function countSessionsInWindow(snapshot: DataSnapshot, startTs: number, endTs: number): number {
+  const sessionIds = new Set<string>();
+
+  for (const event of snapshot.events) {
+    if (isWithinWindow(event.ts, startTs, endTs)) {
+      sessionIds.add(event.sessionId);
+    }
+  }
+
+  for (const prompt of snapshot.promptRecords) {
+    if (isWithinWindow(prompt.ts, startTs, endTs)) {
+      sessionIds.add(prompt.sessionId);
+    }
+  }
+
+  return sessionIds.size;
+}
+
+function countPromptsInWindow(promptRecords: PromptRecord[], startTs: number, endTs: number): number {
+  return promptRecords.filter((prompt) => isWithinWindow(prompt.ts, startTs, endTs)).length;
+}
+
+function countSupportedTokensInWindow(events: ClassifiedUsageEvent[], startTs: number, endTs: number): number {
+  return events.reduce((total, event) => {
+    if (event.classification !== "supported" || !isWithinWindow(event.ts, startTs, endTs)) {
+      return total;
+    }
+
+    return total + event.totalTokens;
+  }, 0);
+}
+
+function buildWeeklyGrowth(snapshot: DataSnapshot, timeZone: string, nowTs: number = Date.now()): WeeklyGrowthSummary {
+  const currentWeekStartTs = getBucketStartTs(nowTs, "week", timeZone);
+  const previousAlignedTs = shiftZonedDateTimeByDays(nowTs, -7, timeZone);
+  const previousWeekStartTs = getBucketStartTs(previousAlignedTs, "week", timeZone);
+
+  return {
+    sessions: buildWeeklyGrowthMetric(
+      countSessionsInWindow(snapshot, currentWeekStartTs, nowTs),
+      countSessionsInWindow(snapshot, previousWeekStartTs, previousAlignedTs)
+    ),
+    prompts: buildWeeklyGrowthMetric(
+      countPromptsInWindow(snapshot.promptRecords, currentWeekStartTs, nowTs),
+      countPromptsInWindow(snapshot.promptRecords, previousWeekStartTs, previousAlignedTs)
+    ),
+    tokens: buildWeeklyGrowthMetric(
+      countSupportedTokensInWindow(snapshot.events, currentWeekStartTs, nowTs),
+      countSupportedTokensInWindow(snapshot.events, previousWeekStartTs, previousAlignedTs)
+    )
+  };
+}
+
 function classifyEvents(rawEvents: RawUsageEvent[], signature: string): Pick<DataSnapshot, "events" | "coverageDetails" | "exclusions" | "calibration"> {
   const supportedCosts = rawEvents
     .flatMap((event) => {
@@ -413,8 +489,9 @@ export class DashboardService {
   private dayTimeseriesCache = new Map<string, TimeseriesPoint[]>();
   private timeseriesCache = new Map<string, TimeseriesPoint[]>();
 
-  public getOverview(): OverviewResponse {
+  public getOverview(timeZone: string): OverviewResponse {
     const snapshot = this.getSnapshot();
+    const coverageSummary = buildCoverageSummary(snapshot);
     const waterLitres = zeroRange();
     let totalTokens = 0;
     let supportedTokens = 0;
@@ -453,11 +530,8 @@ export class DashboardService {
         excludedEvents,
         tokenOnlyEvents
       },
-      coverageSummary: {
-        sessions: new Set([...snapshot.events.map((event) => event.sessionId), ...snapshot.promptRecords.map((prompt) => prompt.sessionId)]).size,
-        prompts: snapshot.promptRecords.length,
-        excludedModels: snapshot.coverageDetails.filter((item) => item.classification === "excluded").length
-      },
+      coverageSummary,
+      weeklyGrowth: buildWeeklyGrowth(snapshot, timeZone),
       modelUsage: buildModelUsage(snapshot.coverageDetails),
       coverageDetails: snapshot.coverageDetails,
       exclusions: snapshot.exclusions,

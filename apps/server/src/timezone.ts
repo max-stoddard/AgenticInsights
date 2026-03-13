@@ -189,6 +189,20 @@ export function getNextBucketStartTs(startTs: number, bucket: Bucket, timeZone: 
   return zonedDateToUtcTs(nextParts, timeZone);
 }
 
+export function shiftZonedDateTimeByDays(ts: number, amount: number, timeZone: string): number {
+  const parts = getZonedDateTimeParts(ts, timeZone);
+  const shiftedDateParts = addDays(parts, amount);
+  return zonedDateTimeToUtcTs(
+    {
+      ...shiftedDateParts,
+      hour: parts.hour,
+      minute: parts.minute,
+      second: parts.second
+    },
+    timeZone
+  );
+}
+
 export function getBucketKey(ts: number, bucket: Bucket, timeZone: string): string {
   return getBucketKeyFromStart(getBucketStartTs(ts, bucket, timeZone), bucket, timeZone);
 }

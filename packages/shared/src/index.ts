@@ -25,6 +25,18 @@ export interface CoverageSummary {
   excludedModels: number;
 }
 
+export interface WeeklyGrowthMetric {
+  current: number;
+  previous: number;
+  increase: number;
+}
+
+export interface WeeklyGrowthSummary {
+  sessions: WeeklyGrowthMetric;
+  prompts: WeeklyGrowthMetric;
+  tokens: WeeklyGrowthMetric;
+}
+
 export type ModelUsageStatus = "allowed" | "unknown" | "local";
 
 export interface ModelUsageEntry {
@@ -80,6 +92,7 @@ export interface OverviewResponse {
   waterLitres: WaterRange;
   coverage: CoverageCounts;
   coverageSummary: CoverageSummary;
+  weeklyGrowth: WeeklyGrowthSummary;
   modelUsage: ModelUsageEntry[];
   coverageDetails: CoverageDetail[];
   exclusions: ExclusionSummary[];

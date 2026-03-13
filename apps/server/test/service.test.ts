@@ -69,6 +69,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 
   if (previousCodexHome === undefined) {
     delete process.env.CODEX_HOME;
@@ -121,6 +122,87 @@ describe("DashboardService", () => {
     expect(refreshedMonth.points[0]?.tokens).toBe(200);
     expect(daySpy).toHaveBeenCalledTimes(2);
     expect(bucketSpy).toHaveBeenCalledTimes(3);
+
+    codex.cleanup();
+    claude.cleanup();
+    cache.cleanup();
+  });
+
+  it("computes weekly growth using week-to-date windows instead of full previous weeks", () => {
+    const codex = createCodexHome();
+    const claude = createClaudeHome();
+    const cache = createCacheDir();
+    process.env.CODEX_HOME = codex.dir;
+    process.env.HOME = claude.homeDir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-13T12:00:00.000Z"));
+
+    writeJsonlFile(codex.dir, "sessions/2026/03/10/session-current-a.jsonl", [
+      ...createSessionRows("session-current-a", "2026-03-10T10:00:00.000Z", 120),
+      {
+        timestamp: "2026-03-10T10:00:01.000Z",
+        type: "event_msg",
+        payload: {
+          type: "user_message",
+          message: "Summarise this week"
+        }
+      }
+    ]);
+    writeJsonlFile(codex.dir, "sessions/2026/03/12/session-current-b.jsonl", [
+      ...createSessionRows("session-current-b", "2026-03-12T09:00:00.000Z", 80),
+      {
+        timestamp: "2026-03-12T09:00:01.000Z",
+        type: "event_msg",
+        payload: {
+          type: "user_message",
+          message: "Compare the latest usage"
+        }
+      }
+    ]);
+    writeJsonlFile(codex.dir, "sessions/2026/03/04/session-previous-a.jsonl", [
+      ...createSessionRows("session-previous-a", "2026-03-04T10:00:00.000Z", 50),
+      {
+        timestamp: "2026-03-04T10:00:01.000Z",
+        type: "event_msg",
+        payload: {
+          type: "user_message",
+          message: "Summarise the earlier week"
+        }
+      }
+    ]);
+    writeJsonlFile(codex.dir, "sessions/2026/03/07/session-previous-late.jsonl", [
+      ...createSessionRows("session-previous-late", "2026-03-07T15:00:00.000Z", 200),
+      {
+        timestamp: "2026-03-07T15:00:01.000Z",
+        type: "event_msg",
+        payload: {
+          type: "user_message",
+          message: "This should not count for week-to-date"
+        }
+      }
+    ]);
+
+    const service = new DashboardService();
+    const overview = service.getOverview("UTC");
+
+    expect(overview.weeklyGrowth).toEqual({
+      sessions: {
+        current: 2,
+        previous: 1,
+        increase: 1
+      },
+      prompts: {
+        current: 2,
+        previous: 1,
+        increase: 1
+      },
+      tokens: {
+        current: 200,
+        previous: 50,
+        increase: 150
+      }
+    });
 
     codex.cleanup();
     claude.cleanup();
@@ -217,7 +299,7 @@ describe("DashboardService", () => {
     );
 
     const service = new DashboardService();
-    const overview = service.getOverview();
+    const overview = service.getOverview("UTC");
 
     expect(overview.coverageDetails).toEqual(
       expect.arrayContaining([
@@ -377,7 +459,7 @@ describe("DashboardService", () => {
     });
 
     const service = new DashboardService();
-    const overview = service.getOverview();
+    const overview = service.getOverview("UTC");
 
     expect(overview.coverageSummary).toEqual({
       sessions: 3,
