@@ -193,9 +193,10 @@ Bootstrap for the first release only:
 After the first successful publish:
 
 1. In the npm package settings for `agentic-insights`, add `max-stoddard/AgenticInsights` and `.github/workflows/release.yml` as a trusted publisher.
-2. Cut the next release tag and confirm the workflow publishes with provenance and no token-based auth.
-3. Delete the `NPM_TOKEN` GitHub Actions secret once trusted publishing is verified.
-4. Deprecate `ai-water-usage` on npm with a message directing users to `agentic-insights`.
+2. Add a matching release notes file at `.github/release-notes/vX.Y.Z.md` before cutting the tag.
+3. Cut the next release tag and confirm the workflow publishes with provenance and no token-based auth.
+4. Delete the `NPM_TOKEN` GitHub Actions secret once trusted publishing is verified.
+5. Deprecate `ai-water-usage` on npm with a message directing users to `agentic-insights`.
 
 ## References
 

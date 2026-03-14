@@ -52,6 +52,7 @@ interface DiscoveredInputs {
 
 interface DashboardServiceOptions {
   scheduleIndexingTask?: (task: () => void) => void;
+  now?: () => number;
 }
 
 interface TimeseriesBundle {
@@ -439,6 +440,7 @@ function buildOverviewFromSnapshot(
   options: {
     diagnostics?: OverviewDiagnostics;
     indexing?: IndexingStatus | null;
+    nowTs?: number;
   } = {}
 ): OverviewResponse {
   const coverageSummary = buildCoverageSummary(snapshot);
@@ -481,7 +483,7 @@ function buildOverviewFromSnapshot(
       tokenOnlyEvents
     },
     coverageSummary,
-    weeklyGrowth: buildWeeklyGrowth(snapshot, timeZone),
+    weeklyGrowth: buildWeeklyGrowth(snapshot, timeZone, options.nowTs),
     modelUsage: buildModelUsage(snapshot.coverageDetails),
     coverageDetails: snapshot.coverageDetails,
     exclusions: snapshot.exclusions,
@@ -618,20 +620,28 @@ export class DashboardService {
   private persistedTimeseriesCacheLoaded = false;
   private discoveryMemo: DiscoveryMemo | null = null;
   private scheduleIndexingTask: (task: () => void) => void;
+  private now: () => number;
 
   public constructor(options: DashboardServiceOptions = {}) {
     this.scheduleIndexingTask = options.scheduleIndexingTask ?? ((task) => queueMicrotask(task));
+    this.now = options.now ?? (() => Date.now());
+  }
+
+  public waitForIdle(): Promise<void> {
+    return this.indexingPromise ?? Promise.resolve();
   }
 
   public getOverview(timeZone: string): OverviewResponse {
     const discovery = this.discoverInputs();
     if (discovery instanceof Error) {
-      return buildOverviewFromSnapshot(this.cacheCompletedSnapshot(this.createReadErrorSnapshot(discovery)), timeZone);
+      return buildOverviewFromSnapshot(this.cacheCompletedSnapshot(this.createReadErrorSnapshot(discovery)), timeZone, {
+        nowTs: this.now()
+      });
     }
 
     if (this.lastCompletedSignature === discovery.signature && this.lastCompletedSnapshot) {
       this.warmTimeseriesBundle(this.lastCompletedSnapshot, timeZone);
-      return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone);
+      return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone, { nowTs: this.now() });
     }
 
     if (!this.indexingPromise) {
@@ -640,7 +650,7 @@ export class DashboardService {
 
     if (this.lastCompletedSignature === discovery.signature && this.lastCompletedSnapshot && !this.indexingPromise) {
       this.warmTimeseriesBundle(this.lastCompletedSnapshot, timeZone);
-      return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone);
+      return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone, { nowTs: this.now() });
     }
 
     return this.buildIndexingOverview(timeZone, discovery.dataPath, discovery.signature);
@@ -668,7 +678,7 @@ export class DashboardService {
   }
 
   private discoverInputs(): DiscoveredInputs | Error {
-    const now = Date.now();
+    const now = this.now();
     if (this.discoveryMemo && now - this.discoveryMemo.cachedAt < DISCOVERY_CACHE_TTL_MS) {
       return this.discoveryMemo.value;
     }
@@ -739,7 +749,7 @@ export class DashboardService {
     const diagnostics = createDiagnostics("indexing", dataPath, null);
     const indexing = this.indexingStatus;
     const snapshot = this.lastCompletedSnapshot ?? createSnapshot(signature, diagnostics);
-    return buildOverviewFromSnapshot(snapshot, timeZone, { diagnostics, indexing });
+    return buildOverviewFromSnapshot(snapshot, timeZone, { diagnostics, indexing, nowTs: this.now() });
   }
 
   private getMaterializedSnapshot(): DataSnapshot {
@@ -757,7 +767,7 @@ export class DashboardService {
 
   private buildSnapshot(discovery: DiscoveredInputs): DataSnapshot {
     const dataPath = discovery.dataPath;
-    const startedAt = this.indexingStatus?.startedAt ?? Date.now();
+    const startedAt = this.indexingStatus?.startedAt ?? this.now();
     this.setIndexingPhase("parsing", startedAt);
 
     const fallbackMap = parseTuiFallback(discovery.tuiLogPath);
@@ -818,7 +828,7 @@ export class DashboardService {
   }
 
   private startIndexing(discovery: DiscoveredInputs): void {
-    const startedAt = Date.now();
+    const startedAt = this.now();
     let resolveIndexing!: () => void;
     this.indexingStatus = createIndexingStatus("discovering", startedAt);
     this.indexingPromise = new Promise<void>((resolve) => {
@@ -856,7 +866,7 @@ export class DashboardService {
   }
 
   private setIndexingPhase(phase: IndexingPhase, startedAt: number): void {
-    this.indexingStatus = createIndexingStatus(phase, startedAt, Date.now());
+    this.indexingStatus = createIndexingStatus(phase, startedAt, this.now());
   }
 
   private warmTimeseriesBundle(snapshot: DataSnapshot, timeZone: string): void {

@@ -73,8 +73,13 @@ function createSessionRows(
 }
 
 function createImmediateDashboardService() {
+  return createDashboardService();
+}
+
+function createDashboardService(options: { now?: () => number } = {}) {
   return new DashboardService({
-    scheduleIndexingTask: (task) => task()
+    scheduleIndexingTask: (task) => task(),
+    ...(options.now ? { now: options.now } : {})
   });
 }
 
@@ -128,14 +133,15 @@ describe("DashboardService", () => {
     process.env.CODEX_HOME = codex.dir;
     setUserHomeEnv(claude.homeDir);
     process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
+    let now = new Date("2026-03-09T12:00:00.000Z").getTime();
 
     writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
 
     const daySpy = vi.spyOn(aggregation, "aggregateDayTimeseries");
     const bucketSpy = vi.spyOn(aggregation, "aggregateFromDayBuckets");
-    const service = createImmediateDashboardService();
+    const service = createDashboardService({
+      now: () => now
+    });
 
     const firstMonth = service.getTimeseries("month", "UTC");
     const secondMonth = service.getTimeseries("month", "UTC");
@@ -148,7 +154,7 @@ describe("DashboardService", () => {
     expect(bucketSpy).toHaveBeenCalledTimes(2);
 
     writeJsonlFile(codex.dir, "sessions/2026/03/10/session-b.jsonl", createSessionRows("session-b", "2026-03-10T10:00:00.000Z", 80));
-    vi.advanceTimersByTime(1_001);
+    now += 1_001;
 
     const refreshedMonth = service.getTimeseries("month", "UTC");
 
@@ -222,20 +228,21 @@ describe("DashboardService", () => {
     process.env.CODEX_HOME = codex.dir;
     setUserHomeEnv(claude.homeDir);
     process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
+    let now = new Date("2026-03-09T12:00:00.000Z").getTime();
 
     writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
 
     const sessionSpy = vi.spyOn(discovery, "listSessionFiles");
-    const service = createImmediateDashboardService();
+    const service = createDashboardService({
+      now: () => now
+    });
 
     expect(service.getOverview("UTC").diagnostics.state).toBe("ready");
     expect(service.getTimeseries("day", "UTC").points[0]?.tokens).toBe(120);
     expect(service.getTimeseries("week", "UTC").points[0]?.tokens).toBe(120);
     expect(sessionSpy).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(1_001);
+    now += 1_001;
 
     expect(service.getOverview("UTC").diagnostics.state).toBe("ready");
     expect(sessionSpy).toHaveBeenCalledTimes(2);
@@ -345,8 +352,7 @@ describe("DashboardService", () => {
     process.env.CODEX_HOME = codex.dir;
     setUserHomeEnv(claude.homeDir);
     process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-13T12:00:00.000Z"));
+    const now = new Date("2026-03-13T12:00:00.000Z").getTime();
 
     writeJsonlFile(codex.dir, "sessions/2026/03/10/session-current-a.jsonl", [
       ...createSessionRows("session-current-a", "2026-03-10T10:00:00.000Z", 120),
@@ -393,7 +399,9 @@ describe("DashboardService", () => {
       }
     ]);
 
-    const service = createImmediateDashboardService();
+    const service = createDashboardService({
+      now: () => now
+    });
     const overview = service.getOverview("UTC");
 
     expect(overview.weeklyGrowth).toEqual({

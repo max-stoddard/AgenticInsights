@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
+import { DashboardService } from "../src/service.js";
 import {
   captureHomeEnv,
   createCacheDir,
@@ -125,13 +126,14 @@ describe("server runtime", () => {
       }
     ]);
 
-    const app = createApp();
+    const service = new DashboardService();
+    const app = createApp({ service });
     const indexingResponse = await app.inject({ method: "GET", url: "/api/overview" });
     const indexingOverview = indexingResponse.json<{ diagnostics: { state: string }; indexing: { phase: string } | null }>();
     expect(indexingOverview.diagnostics.state).toBe("indexing");
     expect(indexingOverview.indexing?.phase).toBe("discovering");
 
-    await Promise.resolve();
+    await service.waitForIdle();
 
     const response = await app.inject({ method: "GET", url: "/api/overview" });
     const overview = response.json<{ diagnostics: { codexHome: string; message: string | null; state: string } }>();
@@ -163,13 +165,14 @@ describe("server runtime", () => {
       output_tokens: 10
     });
 
-    const app = createApp();
+    const service = new DashboardService();
+    const app = createApp({ service });
     const indexingResponse = await app.inject({ method: "GET", url: "/api/overview" });
     const indexingOverview = indexingResponse.json<{ diagnostics: { state: string }; indexing: { phase: string } | null }>();
     expect(indexingOverview.diagnostics.state).toBe("indexing");
     expect(indexingOverview.indexing?.phase).toBe("discovering");
 
-    await Promise.resolve();
+    await service.waitForIdle();
 
     const response = await app.inject({ method: "GET", url: "/api/overview" });
     const overview = response.json<{ diagnostics: { codexHome: string; message: string | null; state: string } }>();
@@ -194,13 +197,14 @@ describe("server runtime", () => {
     setUserHomeEnv(claude.homeDir);
     process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
 
-    const app = createApp();
+    const service = new DashboardService();
+    const app = createApp({ service });
     const indexingResponse = await app.inject({ method: "GET", url: "/api/overview" });
     const indexingOverview = indexingResponse.json<{ diagnostics: { state: string }; indexing: { phase: string } | null }>();
     expect(indexingOverview.diagnostics.state).toBe("indexing");
     expect(indexingOverview.indexing?.phase).toBe("discovering");
 
-    await Promise.resolve();
+    await service.waitForIdle();
 
     const response = await app.inject({ method: "GET", url: "/api/overview" });
     const overview = response.json<{ diagnostics: { codexHome: string; message: string; state: string } }>();

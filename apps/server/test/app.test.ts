@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
+import { DashboardService } from "../src/service.js";
 import {
   captureHomeEnv,
   createCacheDir,
@@ -197,13 +198,14 @@ describe("API routes", () => {
     ]);
     writeTuiLog(codex.dir, "2026-03-09T11:00:02.000Z INFO thread_id=fallback-only total_usage_tokens=60");
 
-    const app = createApp();
+    const service = new DashboardService();
+    const app = createApp({ service });
     const indexingResponse = await app.inject({ method: "GET", url: "/api/overview" });
     const indexingOverview = indexingResponse.json();
     expect(indexingOverview.diagnostics.state).toBe("indexing");
     expect(indexingOverview.indexing?.phase).toBe("discovering");
 
-    await Promise.resolve();
+    await service.waitForIdle();
 
     const overviewResponse = await app.inject({ method: "GET", url: "/api/overview" });
     const overview = overviewResponse.json();

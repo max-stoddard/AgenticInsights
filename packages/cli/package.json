@@ -1,6 +1,6 @@
 {
   "name": "agentic-insights",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Launch a local dashboard that estimates the water impact of Codex usage",
   "license": "MIT",
   "type": "module",
