@@ -39,5 +39,8 @@ describe("HeroBanner", () => {
 
     expect(screen.getByText(/understand your agent/i)).toBeInTheDocument();
     expect(screen.getByText(/footprint locally\./i)).toBeInTheDocument();
+    expect(screen.getByTestId("hero-word-slot")).toHaveClass("inline-block", "sm:inline-grid", "sm:min-w-[4.5ch]");
+    expect(screen.getByTestId("hero-word-slot")).not.toHaveClass("min-w-[4.5ch]");
+    expect(screen.getByText(/footprint locally\./i).parentElement).toHaveClass("block", "sm:inline");
   });
 });

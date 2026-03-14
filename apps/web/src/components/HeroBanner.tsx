@@ -31,18 +31,25 @@ export function HeroBanner() {
       <div className="absolute inset-y-0 right-0 hidden w-40 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.12),transparent_68%)] sm:block" />
       <div className="relative mx-auto max-w-4xl text-center">
         <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-[-0.05em] text-ink sm:text-5xl">
-          Understand your agent{" "}
-          <span className="inline-grid min-w-[6ch] justify-items-start align-baseline text-left">
+          <span>Understand your agent</span>
+          <span className="block sm:inline">
+            {" "}
             <span
-              key={activeWord.key}
-              className={[FOOTPRINT_TEXT_CLASS_BY_PROPERTY[activeWord.key], reducedMotion ? undefined : "hero-word"].filter(
-                Boolean
-              ).join(" ")}
+              className="inline-block align-baseline text-left sm:inline-grid sm:min-w-[4.5ch] sm:justify-items-start"
+              data-testid="hero-word-slot"
             >
-              {activeWord.label}
+              <span
+                key={activeWord.key}
+                className={[FOOTPRINT_TEXT_CLASS_BY_PROPERTY[activeWord.key], reducedMotion ? undefined : "hero-word"].filter(
+                  Boolean
+                ).join(" ")}
+              >
+                {activeWord.label}
+              </span>
             </span>
-          </span>{" "}
-          footprint locally.
+            {" "}
+            <span>footprint locally.</span>
+          </span>
         </h1>
       </div>
     </section>
