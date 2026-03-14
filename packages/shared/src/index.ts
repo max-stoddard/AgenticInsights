@@ -149,7 +149,6 @@ export interface WaterScaleComparison {
     | "cup-of-water"
     | "person-per-day"
     | "coffee"
-    | "beef-burger"
     | "jeans"
     | "manufacturing-a-car"
     | "golf-course-daily";
@@ -203,18 +202,6 @@ export const WATER_SCALE_COMPARISONS: readonly WaterScaleComparison[] = [
     pluralLabel: "cups of coffee"
   },
   {
-    id: "beef-burger",
-    label: "A beef burger",
-    litres: 2350,
-    comparisonType: "embedded_footprint",
-    description: "The embedded freshwater footprint for one 150 g beef burger.",
-    sourceLabel: "Ecological Indicators DOI: Water footprint of soy milk and soy burger and equivalent animal products",
-    sourceUrl: "https://doi.org/10.1016/j.ecolind.2011.12.009",
-    sourceNote: "Uses the paper's 150 g beef burger comparison.",
-    singularLabel: "beef burger",
-    pluralLabel: "beef burgers"
-  },
-  {
     id: "jeans",
     label: "A pair of jeans",
     litres: 3781,
@@ -250,7 +237,7 @@ export const WATER_SCALE_COMPARISONS: readonly WaterScaleComparison[] = [
 
 export const WATER_PRODUCT_EQUIVALENTS: readonly WaterProductEquivalent[] = WATER_SCALE_COMPARISONS.filter(
   (comparison): comparison is WaterProductEquivalent =>
-    (comparison.id === "coffee" || comparison.id === "beef-burger" || comparison.id === "jeans") &&
+    (comparison.id === "coffee" || comparison.id === "jeans") &&
     comparison.singularLabel !== undefined &&
     comparison.pluralLabel !== undefined
 );

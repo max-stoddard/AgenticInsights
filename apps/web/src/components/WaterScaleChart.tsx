@@ -288,9 +288,6 @@ export function WaterScaleChart({ waterLitres }: WaterScaleChartProps) {
                         {line}
                       </tspan>
                     ))}
-                    <tspan x={point.x} dy="16" className="fill-slate-400 text-[11px] font-normal">
-                      {formatScaledLitres(anchor.litres)}
-                    </tspan>
                   </text>
                 </g>
               );
@@ -367,15 +364,11 @@ export function WaterScaleChart({ waterLitres }: WaterScaleChartProps) {
 
         <ol className="mt-5 grid gap-3 sm:hidden" data-testid="water-scale-mobile-legend">
           {anchors.map((anchor) => (
-            <li
-              key={anchor.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-slate-200/70 bg-white px-3 py-2"
-            >
+            <li key={anchor.id} className="rounded-lg border border-slate-200/70 bg-white px-3 py-2">
               <div className="flex min-w-0 items-start gap-2.5">
                 <span aria-hidden="true" className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-sky-600" />
                 <span className="text-sm font-medium text-ink">{anchor.label}</span>
               </div>
-              <span className="shrink-0 text-sm text-ink-secondary">{formatScaledLitres(anchor.litres)}</span>
             </li>
           ))}
         </ol>

@@ -92,7 +92,7 @@ describe("WaterScaleChart", () => {
     render(<WaterScaleChart waterLitres={waterLitres} />);
 
     expect(screen.getByTestId("water-scale-mobile-legend")).toHaveTextContent("A cup of water");
-    expect(screen.getByTestId("water-scale-mobile-legend")).toHaveTextContent("67.5 KL");
+    expect(screen.getByTestId("water-scale-mobile-legend")).not.toHaveTextContent("67.5 KL");
     expect(screen.getByTestId("water-scale-scroll")).not.toHaveClass("overflow-x-auto");
     expect(screen.getByTestId("water-scale-canvas")).not.toHaveClass("min-w-[56rem]");
   });

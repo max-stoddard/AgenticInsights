@@ -8,7 +8,6 @@ describe("waterScale", () => {
       "cup-of-water",
       "person-per-day",
       "coffee",
-      "beef-burger",
       "jeans",
       "manufacturing-a-car",
       "golf-course-daily"

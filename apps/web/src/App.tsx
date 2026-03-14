@@ -1,10 +1,16 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import type { Bucket, MethodologyResponse, MethodologyTabId, OverviewResponse, TimeseriesResponse } from "@agentic-insights/shared";
 import { fetchMethodology, fetchOverview, fetchTimeseries } from "./api";
 import { DashboardFooter } from "./components/DashboardFooter";
 import { Header } from "./components/Header";
 import { MethodologyDrawer } from "./components/MethodologyDrawer";
 import { DashboardView } from "./views/DashboardView";
+
+const ALL_BUCKETS: Bucket[] = ["day", "week", "month"];
+
+function getTimeseriesRequestKey(bucket: Bucket, timeZone: string): string {
+  return `${bucket}|${timeZone}`;
+}
 
 function useTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -29,6 +35,8 @@ export default function App() {
   const [methodologyLoading, setMethodologyLoading] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [timeseriesError, setTimeseriesError] = useState<string | null>(null);
+  const timeseriesRequestsRef = useRef(new Map<string, Promise<TimeseriesResponse>>());
+  const prefetchedTimeseriesKeysRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (loadedTimeZone === timeZone) {
@@ -42,6 +50,9 @@ export default function App() {
     setOverviewError(null);
     setTimeseriesError(null);
     setOverviewRequestKey(0);
+    setTimeseriesLoading(false);
+    timeseriesRequestsRef.current.clear();
+    prefetchedTimeseriesKeysRef.current.clear();
   }, [loadedTimeZone, timeZone]);
 
   useEffect(() => {
@@ -86,10 +97,21 @@ export default function App() {
     }
 
     let cancelled = false;
+    const requestKey = getTimeseriesRequestKey(bucket, timeZone);
     setTimeseriesLoading(true);
     setTimeseriesError(null);
 
-    fetchTimeseries(bucket, timeZone)
+    let request = timeseriesRequestsRef.current.get(requestKey);
+    if (!request) {
+      request = fetchTimeseries(bucket, timeZone).finally(() => {
+        if (timeseriesRequestsRef.current.get(requestKey) === request) {
+          timeseriesRequestsRef.current.delete(requestKey);
+        }
+      });
+      timeseriesRequestsRef.current.set(requestKey, request);
+    }
+
+    request
       .then((nextTimeseries) => {
         if (!cancelled) {
           setTimeseriesByBucket((current) => ({
@@ -108,6 +130,56 @@ export default function App() {
           setTimeseriesLoading(false);
         }
       });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bucket, overview, timeZone, timeseriesByBucket]);
+
+  useEffect(() => {
+    if (!overview || overview.diagnostics.state !== "ready" || !timeseriesByBucket[bucket]) {
+      return;
+    }
+
+    let cancelled = false;
+
+    for (const nextBucket of ALL_BUCKETS) {
+      if (nextBucket === bucket || timeseriesByBucket[nextBucket]) {
+        continue;
+      }
+
+      const requestKey = getTimeseriesRequestKey(nextBucket, timeZone);
+      if (timeseriesRequestsRef.current.has(requestKey) || prefetchedTimeseriesKeysRef.current.has(requestKey)) {
+        continue;
+      }
+
+      prefetchedTimeseriesKeysRef.current.add(requestKey);
+      const request = fetchTimeseries(nextBucket, timeZone).finally(() => {
+        if (timeseriesRequestsRef.current.get(requestKey) === request) {
+          timeseriesRequestsRef.current.delete(requestKey);
+        }
+      });
+      timeseriesRequestsRef.current.set(requestKey, request);
+
+      void request
+        .then((nextTimeseries) => {
+          if (!cancelled) {
+            setTimeseriesByBucket((current) => {
+              if (current[nextTimeseries.bucket]) {
+                return current;
+              }
+
+              return {
+                ...current,
+                [nextTimeseries.bucket]: nextTimeseries
+              };
+            });
+          }
+        })
+        .catch(() => {
+          // Ignore background prefetch failures. The active bucket can retry on demand.
+        });
+    }
 
     return () => {
       cancelled = true;

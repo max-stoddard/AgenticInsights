@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as aggregation from "../src/aggregation.js";
+import * as discovery from "../src/discovery.js";
 import { DashboardService } from "../src/service.js";
 import {
   captureHomeEnv,
@@ -127,6 +128,8 @@ describe("DashboardService", () => {
     process.env.CODEX_HOME = codex.dir;
     setUserHomeEnv(claude.homeDir);
     process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
 
     writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
 
@@ -145,12 +148,97 @@ describe("DashboardService", () => {
     expect(bucketSpy).toHaveBeenCalledTimes(2);
 
     writeJsonlFile(codex.dir, "sessions/2026/03/10/session-b.jsonl", createSessionRows("session-b", "2026-03-10T10:00:00.000Z", 80));
+    vi.advanceTimersByTime(1_001);
 
     const refreshedMonth = service.getTimeseries("month", "UTC");
 
     expect(refreshedMonth.points[0]?.tokens).toBe(200);
     expect(daySpy).toHaveBeenCalledTimes(2);
-    expect(bucketSpy).toHaveBeenCalledTimes(3);
+    expect(bucketSpy).toHaveBeenCalledTimes(4);
+
+    codex.cleanup();
+    claude.cleanup();
+    cache.cleanup();
+  });
+
+  it("reuses persisted aggregate bundles across service instances for the same signature", () => {
+    const codex = createCodexHome();
+    const claude = createClaudeHome();
+    const cache = createCacheDir();
+    process.env.CODEX_HOME = codex.dir;
+    setUserHomeEnv(claude.homeDir);
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+
+    writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
+
+    const firstService = createImmediateDashboardService();
+    expect(firstService.getTimeseries("month", "UTC").points[0]?.tokens).toBe(120);
+
+    const daySpy = vi.spyOn(aggregation, "aggregateDayTimeseries");
+    const bucketSpy = vi.spyOn(aggregation, "aggregateFromDayBuckets");
+    const secondService = createImmediateDashboardService();
+
+    expect(secondService.getTimeseries("week", "UTC").points[0]?.tokens).toBe(120);
+    expect(daySpy).not.toHaveBeenCalled();
+    expect(bucketSpy).not.toHaveBeenCalled();
+
+    codex.cleanup();
+    claude.cleanup();
+    cache.cleanup();
+  });
+
+  it("invalidates persisted aggregate bundles when the snapshot signature changes", () => {
+    const codex = createCodexHome();
+    const claude = createClaudeHome();
+    const cache = createCacheDir();
+    process.env.CODEX_HOME = codex.dir;
+    setUserHomeEnv(claude.homeDir);
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+
+    writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
+
+    const firstService = createImmediateDashboardService();
+    expect(firstService.getTimeseries("month", "UTC").points[0]?.tokens).toBe(120);
+
+    writeJsonlFile(codex.dir, "sessions/2026/03/10/session-b.jsonl", createSessionRows("session-b", "2026-03-10T10:00:00.000Z", 80));
+
+    const daySpy = vi.spyOn(aggregation, "aggregateDayTimeseries");
+    const bucketSpy = vi.spyOn(aggregation, "aggregateFromDayBuckets");
+    const secondService = createImmediateDashboardService();
+
+    expect(secondService.getTimeseries("month", "UTC").points[0]?.tokens).toBe(200);
+    expect(daySpy).toHaveBeenCalledTimes(1);
+    expect(bucketSpy).toHaveBeenCalledTimes(2);
+
+    codex.cleanup();
+    claude.cleanup();
+    cache.cleanup();
+  });
+
+  it("memoizes discovery scans briefly across rapid overview and timeseries requests", () => {
+    const codex = createCodexHome();
+    const claude = createClaudeHome();
+    const cache = createCacheDir();
+    process.env.CODEX_HOME = codex.dir;
+    setUserHomeEnv(claude.homeDir);
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
+
+    writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
+
+    const sessionSpy = vi.spyOn(discovery, "listSessionFiles");
+    const service = createImmediateDashboardService();
+
+    expect(service.getOverview("UTC").diagnostics.state).toBe("ready");
+    expect(service.getTimeseries("day", "UTC").points[0]?.tokens).toBe(120);
+    expect(service.getTimeseries("week", "UTC").points[0]?.tokens).toBe(120);
+    expect(sessionSpy).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1_001);
+
+    expect(service.getOverview("UTC").diagnostics.state).toBe("ready");
+    expect(sessionSpy).toHaveBeenCalledTimes(2);
 
     codex.cleanup();
     claude.cleanup();

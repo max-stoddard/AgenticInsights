@@ -339,10 +339,6 @@ describe("API routes", () => {
           url: "https://doi.org/10.1016/j.ecolecon.2007.02.022"
         },
         {
-          label: "Ecological Indicators DOI: Water footprint of soy milk and soy burger and equivalent animal products",
-          url: "https://doi.org/10.1016/j.ecolind.2011.12.009"
-        },
-        {
           label: "Sustainability Science DOI: Comparing ecological and water footprint of denim jeans and a tri-blend T-shirt",
           url: "https://doi.org/10.1007/s11625-022-01131-0"
         },

@@ -47,6 +47,10 @@ export function getCacheDir(): string {
   return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"), "agentic-insights");
 }
 
+export function getTimeseriesCachePath(): string {
+  return path.join(getCacheDir(), "timeseries.json");
+}
+
 export function ensureDirSync(dirPath: string): void {
   fs.mkdirSync(dirPath, { recursive: true });
 }

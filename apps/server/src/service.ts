@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import type {
   Bucket,
   CoverageClassification,
@@ -18,7 +19,7 @@ import type {
 import { getOrCreateCalibration, buildSignature } from "./calibration.js";
 import { parseClaudeProjectFile, parseClaudeSessionMetaFile } from "./claude.js";
 import { getTuiLogPath, listClaudeProjectFiles, listClaudeSessionMetaFiles, listSessionFiles } from "./discovery.js";
-import { getCodexHomeConfig, getDefaultClaudeHome } from "./paths.js";
+import { ensureDirSync, getCodexHomeConfig, getDefaultClaudeHome, getTimeseriesCachePath } from "./paths.js";
 import { parseSessionFile, parseSessionPrompts, parseTuiFallback } from "./parser.js";
 import { aggregateDayTimeseries, aggregateFromDayBuckets } from "./aggregation.js";
 import { getBucketStartTs, shiftZonedDateTimeByDays } from "./timezone.js";
@@ -32,6 +33,8 @@ import {
   getPricingEntry
 } from "./pricing.js";
 import type { ClassifiedUsageEvent, CoverageDetailAggregate, DataSnapshot, PromptRecord, RawUsageEvent } from "./types.js";
+
+const DISCOVERY_CACHE_TTL_MS = 1_000;
 
 interface DiscoveredInputs {
   codexHome: string;
@@ -49,6 +52,22 @@ interface DiscoveredInputs {
 
 interface DashboardServiceOptions {
   scheduleIndexingTask?: (task: () => void) => void;
+}
+
+interface TimeseriesBundle {
+  day: TimeseriesPoint[];
+  week: TimeseriesPoint[];
+  month: TimeseriesPoint[];
+}
+
+interface PersistedTimeseriesCache {
+  signature: string;
+  byTimeZone: Record<string, TimeseriesBundle>;
+}
+
+interface DiscoveryMemo {
+  cachedAt: number;
+  value: DiscoveredInputs | Error;
 }
 
 function zeroRange(): WaterRange {
@@ -90,6 +109,24 @@ function dedupePrompts(prompts: PromptRecord[]): PromptRecord[] {
   }
 
   return [...map.values()].sort((a, b) => a.ts - b.ts);
+}
+
+function buildTimeseriesBundle(events: ClassifiedUsageEvent[], timeZone: string): TimeseriesBundle {
+  const day = aggregateDayTimeseries(events, timeZone);
+  return {
+    day,
+    week: aggregateFromDayBuckets(day, "week", timeZone),
+    month: aggregateFromDayBuckets(day, "month", timeZone)
+  };
+}
+
+function isPersistedTimeseriesCache(value: unknown): value is PersistedTimeseriesCache {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<PersistedTimeseriesCache>;
+  return typeof candidate.signature === "string" && candidate.byTimeZone !== null && typeof candidate.byTimeZone === "object";
 }
 
 function createDiagnostics(
@@ -576,8 +613,10 @@ export class DashboardService {
   private lastCompletedSignature: string | null = null;
   private indexingStatus: IndexingStatus | null = null;
   private indexingPromise: Promise<void> | null = null;
-  private dayTimeseriesCache = new Map<string, TimeseriesPoint[]>();
-  private timeseriesCache = new Map<string, TimeseriesPoint[]>();
+  private aggregateBundleCache = new Map<string, TimeseriesBundle>();
+  private persistedTimeseriesCache: PersistedTimeseriesCache | null = null;
+  private persistedTimeseriesCacheLoaded = false;
+  private discoveryMemo: DiscoveryMemo | null = null;
   private scheduleIndexingTask: (task: () => void) => void;
 
   public constructor(options: DashboardServiceOptions = {}) {
@@ -591,6 +630,7 @@ export class DashboardService {
     }
 
     if (this.lastCompletedSignature === discovery.signature && this.lastCompletedSnapshot) {
+      this.warmTimeseriesBundle(this.lastCompletedSnapshot, timeZone);
       return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone);
     }
 
@@ -599,6 +639,7 @@ export class DashboardService {
     }
 
     if (this.lastCompletedSignature === discovery.signature && this.lastCompletedSnapshot && !this.indexingPromise) {
+      this.warmTimeseriesBundle(this.lastCompletedSnapshot, timeZone);
       return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone);
     }
 
@@ -607,20 +648,7 @@ export class DashboardService {
 
   public getTimeseries(bucket: Bucket, timeZone: string): TimeseriesResponse {
     const snapshot = this.getMaterializedSnapshot();
-    const cacheKey = this.getTimeseriesCacheKey(snapshot.signature, bucket, timeZone);
-    const cached = this.timeseriesCache.get(cacheKey);
-
-    if (cached) {
-      return {
-        bucket,
-        points: cached
-      };
-    }
-
-    const dayPoints = this.getDayTimeseries(snapshot, timeZone);
-    const points = bucket === "day" ? dayPoints : aggregateFromDayBuckets(dayPoints, bucket, timeZone);
-    this.timeseriesCache.set(cacheKey, points);
-
+    const points = this.getTimeseriesBundle(snapshot, timeZone)[bucket];
     return {
       bucket,
       points
@@ -640,6 +668,11 @@ export class DashboardService {
   }
 
   private discoverInputs(): DiscoveredInputs | Error {
+    const now = Date.now();
+    if (this.discoveryMemo && now - this.discoveryMemo.cachedAt < DISCOVERY_CACHE_TTL_MS) {
+      return this.discoveryMemo.value;
+    }
+
     const codexHomeConfig = getCodexHomeConfig();
     const codexHome = codexHomeConfig.path;
     const claudeHome = getDefaultClaudeHome();
@@ -674,7 +707,7 @@ export class DashboardService {
         codexHomeState: codexIsDirectory ? "ready" : "empty",
         fileFingerprint: fingerprint
       });
-      return {
+      const discoveredInputs = {
         codexHome,
         claudeHome,
         dataPath,
@@ -687,8 +720,18 @@ export class DashboardService {
         claudeSessionMetaFiles,
         tuiLogPath
       };
+      this.discoveryMemo = {
+        cachedAt: now,
+        value: discoveredInputs
+      };
+      return discoveredInputs;
     } catch (error) {
-      return new Error(getErrorMessage(error));
+      const readError = new Error(getErrorMessage(error));
+      this.discoveryMemo = {
+        cachedAt: now,
+        value: readError
+      };
+      return readError;
     }
   }
 
@@ -816,27 +859,103 @@ export class DashboardService {
     this.indexingStatus = createIndexingStatus(phase, startedAt, Date.now());
   }
 
-  private getDayTimeseries(snapshot: DataSnapshot, timeZone: string): TimeseriesPoint[] {
-    const cacheKey = `${snapshot.signature}|${timeZone}`;
-    const cached = this.dayTimeseriesCache.get(cacheKey);
+  private warmTimeseriesBundle(snapshot: DataSnapshot, timeZone: string): void {
+    if (snapshot.diagnostics.state !== "ready") {
+      return;
+    }
+
+    this.getTimeseriesBundle(snapshot, timeZone);
+  }
+
+  private getTimeseriesBundle(snapshot: DataSnapshot, timeZone: string): TimeseriesBundle {
+    const cacheKey = this.getTimeseriesBundleCacheKey(snapshot.signature, timeZone);
+    const cached = this.aggregateBundleCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const points = aggregateDayTimeseries(snapshot.events, timeZone);
-    this.dayTimeseriesCache.set(cacheKey, points);
-    this.timeseriesCache.set(this.getTimeseriesCacheKey(snapshot.signature, "day", timeZone), points);
-    return points;
+    const persisted = this.getPersistedTimeseriesBundle(snapshot.signature, timeZone);
+    if (persisted) {
+      this.aggregateBundleCache.set(cacheKey, persisted);
+      return persisted;
+    }
+
+    const bundle = buildTimeseriesBundle(snapshot.events, timeZone);
+    this.aggregateBundleCache.set(cacheKey, bundle);
+    this.writePersistedTimeseriesBundle(snapshot.signature, timeZone, bundle);
+    return bundle;
   }
 
-  private getTimeseriesCacheKey(signature: string, bucket: Bucket, timeZone: string): string {
-    return `${signature}|${bucket}|${timeZone}`;
+  private getTimeseriesBundleCacheKey(signature: string, timeZone: string): string {
+    return `${signature}|${timeZone}`;
+  }
+
+  private getPersistedTimeseriesBundle(signature: string, timeZone: string): TimeseriesBundle | null {
+    const persistedCache = this.readPersistedTimeseriesCache();
+    if (!persistedCache || persistedCache.signature !== signature) {
+      return null;
+    }
+
+    return persistedCache.byTimeZone[timeZone] ?? null;
+  }
+
+  private readPersistedTimeseriesCache(): PersistedTimeseriesCache | null {
+    if (this.persistedTimeseriesCacheLoaded) {
+      return this.persistedTimeseriesCache;
+    }
+
+    this.persistedTimeseriesCacheLoaded = true;
+    const cachePath = getTimeseriesCachePath();
+    if (!fs.existsSync(cachePath)) {
+      this.persistedTimeseriesCache = null;
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(fs.readFileSync(cachePath, "utf8")) as unknown;
+      this.persistedTimeseriesCache = isPersistedTimeseriesCache(parsed) ? parsed : null;
+    } catch {
+      this.persistedTimeseriesCache = null;
+    }
+
+    return this.persistedTimeseriesCache;
+  }
+
+  private writePersistedTimeseriesBundle(signature: string, timeZone: string, bundle: TimeseriesBundle): void {
+    const persistedCache = this.readPersistedTimeseriesCache();
+    const cachePath = getTimeseriesCachePath();
+    const nextCache =
+      persistedCache && persistedCache.signature === signature
+        ? {
+            signature,
+            byTimeZone: {
+              ...persistedCache.byTimeZone,
+              [timeZone]: bundle
+            }
+          }
+        : {
+            signature,
+            byTimeZone: {
+              [timeZone]: bundle
+            }
+          };
+
+    this.persistedTimeseriesCache = nextCache;
+    this.persistedTimeseriesCacheLoaded = true;
+
+    try {
+      ensureDirSync(path.dirname(cachePath));
+      fs.writeFileSync(cachePath, JSON.stringify(nextCache));
+    } catch {
+      // Ignore cache write failures and continue serving in-memory data.
+    }
   }
 
   private cacheCompletedSnapshot(snapshot: DataSnapshot): DataSnapshot {
     if (this.lastCompletedSnapshot?.signature !== snapshot.signature) {
-      this.dayTimeseriesCache.clear();
-      this.timeseriesCache.clear();
+      this.aggregateBundleCache.clear();
+      this.persistedTimeseriesCache = null;
+      this.persistedTimeseriesCacheLoaded = false;
     }
 
     this.lastCompletedSnapshot = snapshot;

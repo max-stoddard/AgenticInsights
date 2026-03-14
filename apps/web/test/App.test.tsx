@@ -265,10 +265,6 @@ function createMethodologyResponse() {
           url: "https://doi.org/10.1016/j.ecolecon.2007.02.022"
         },
         {
-          label: "Ecological Indicators DOI: Water footprint of soy milk and soy burger and equivalent animal products",
-          url: "https://doi.org/10.1016/j.ecolind.2011.12.009"
-        },
-        {
           label: "Sustainability Science DOI: Comparing ecological and water footprint of denim jeans and a tri-blend T-shirt",
           url: "https://doi.org/10.1007/s11625-022-01131-0"
         },
@@ -372,6 +368,18 @@ function createTimeseriesResponse(bucket: "day" | "week" | "month", waterLitres 
   };
 }
 
+function createTimeseriesResponseForUrl(url: string, waterLitres = createReadyOverviewResponse().waterLitres) {
+  if (url.includes("bucket=week")) {
+    return createTimeseriesResponse("week");
+  }
+
+  if (url.includes("bucket=month")) {
+    return createTimeseriesResponse("month");
+  }
+
+  return createTimeseriesResponse("day", waterLitres);
+}
+
 function mockDashboardResponses(options?: DashboardResponseOptions) {
   const overviewResponse = createReadyOverviewResponse(options);
 
@@ -385,15 +393,11 @@ function mockDashboardResponses(options?: DashboardResponseOptions) {
       return jsonResponse(createMethodologyResponse());
     }
 
-    if (url.includes("bucket=day")) {
-      return jsonResponse(createTimeseriesResponse("day", overviewResponse.waterLitres));
+    if (url.startsWith("/api/timeseries")) {
+      return jsonResponse(createTimeseriesResponseForUrl(url, overviewResponse.waterLitres));
     }
 
-    if (url.includes("bucket=week")) {
-      return jsonResponse(createTimeseriesResponse("week"));
-    }
-
-    return jsonResponse(createTimeseriesResponse("month"));
+    throw new Error(`Unexpected request: ${url}`);
   });
 }
 
@@ -442,7 +446,6 @@ describe("App", () => {
     expect(within(waterScaleSection).getByTestId("water-scale-anchor-cup-of-water")).toBeInTheDocument();
     expect(within(waterScaleSection).getByTestId("water-scale-anchor-person-per-day")).toBeInTheDocument();
     expect(within(waterScaleSection).getByTestId("water-scale-anchor-coffee")).toBeInTheDocument();
-    expect(within(waterScaleSection).getByTestId("water-scale-anchor-beef-burger")).toBeInTheDocument();
     expect(within(waterScaleSection).getByTestId("water-scale-anchor-jeans")).toBeInTheDocument();
     expect(within(waterScaleSection).getByTestId("water-scale-anchor-manufacturing-a-car")).toBeInTheDocument();
     expect(within(waterScaleSection).getByTestId("water-scale-anchor-golf-course-daily")).toBeInTheDocument();
@@ -484,8 +487,8 @@ describe("App", () => {
       if (url.startsWith("/api/overview")) {
         return overviewDeferred.promise;
       }
-      if (url.includes("bucket=day")) {
-        return jsonResponse(createTimeseriesResponse("day", overviewResponse.waterLitres));
+      if (url.startsWith("/api/timeseries")) {
+        return jsonResponse(createTimeseriesResponseForUrl(url, overviewResponse.waterLitres));
       }
 
       throw new Error(`Unexpected request: ${url}`);
@@ -615,8 +618,8 @@ describe("App", () => {
         return jsonResponse(readyOverview);
       }
 
-      if (url.includes("bucket=day")) {
-        return jsonResponse(createTimeseriesResponse("day", readyOverview.waterLitres));
+      if (url.startsWith("/api/timeseries")) {
+        return jsonResponse(createTimeseriesResponseForUrl(url, readyOverview.waterLitres));
       }
 
       throw new Error(`Unexpected request: ${url}`);
@@ -702,6 +705,9 @@ describe("App", () => {
       if (url.includes("bucket=day")) {
         return timeseriesDeferred.promise;
       }
+      if (url.startsWith("/api/timeseries")) {
+        return jsonResponse(createTimeseriesResponseForUrl(url, overviewResponse.waterLitres));
+      }
 
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -786,7 +792,22 @@ describe("App", () => {
     expect(screen.getByText("Based on 1 of your prompt")).toBeInTheDocument();
   });
 
-  it("switches time bucket via the toggle and fetches new timeseries", async () => {
+  it("prefetches missing week and month buckets after the active day series loads", async () => {
+    mockDashboardResponses();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("water-chart")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=week"));
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=month"));
+    });
+  });
+
+  it("switches time bucket via the toggle without refetching prefetched buckets", async () => {
     mockDashboardResponses();
 
     const { container } = render(<App />);
@@ -794,6 +815,13 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getAllByText("1.20 L").length).toBeGreaterThan(0);
     });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=week"));
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=month"));
+    });
+
+    const weekRequestsBeforeSwitch = fetchMock.mock.calls.filter(([input]) => String(input).includes("bucket=week")).length;
+    const monthRequestsBeforeSwitch = fetchMock.mock.calls.filter(([input]) => String(input).includes("bucket=month")).length;
 
     const dayTab = screen.getByRole("tab", { name: "Day" });
     dayTab.focus();
@@ -802,16 +830,60 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByRole("tab", { name: "Week" })).toHaveAttribute("aria-selected", "true");
     });
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=week"));
-    });
+    expect(screen.queryByTestId("usage-over-time-skeleton")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Month" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("bucket=month"));
+      expect(screen.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "true");
+      expect(container.querySelectorAll(".recharts-bar-rectangle").length).toBeGreaterThanOrEqual(3);
     });
+
+    const weekRequestsAfterSwitch = fetchMock.mock.calls.filter(([input]) => String(input).includes("bucket=week")).length;
+    const monthRequestsAfterSwitch = fetchMock.mock.calls.filter(([input]) => String(input).includes("bucket=month")).length;
+
+    expect(weekRequestsAfterSwitch).toBe(weekRequestsBeforeSwitch);
+    expect(monthRequestsAfterSwitch).toBe(monthRequestsBeforeSwitch);
+  });
+
+  it("keeps the active chart visible when background prefetch fails and retries on demand", async () => {
+    const overviewResponse = createReadyOverviewResponse();
+    let monthRequests = 0;
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.startsWith("/api/overview")) {
+        return jsonResponse(overviewResponse);
+      }
+      if (url.includes("bucket=month")) {
+        monthRequests += 1;
+        if (monthRequests === 1) {
+          return new Response("server error", { status: 500 });
+        }
+
+        return jsonResponse(createTimeseriesResponse("month"));
+      }
+      if (url.startsWith("/api/timeseries")) {
+        return jsonResponse(createTimeseriesResponseForUrl(url, overviewResponse.waterLitres));
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    const { container } = render(<App />);
+
+    expect(await screen.findByTestId("water-chart")).toBeInTheDocument();
+
     await waitFor(() => {
+      expect(monthRequests).toBe(1);
+    });
+    expect(screen.queryByTestId("usage-over-time-error")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Month" }));
+
+    await waitFor(() => {
+      expect(monthRequests).toBe(2);
+      expect(screen.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "true");
       expect(container.querySelectorAll(".recharts-bar-rectangle").length).toBeGreaterThanOrEqual(3);
     });
   });
@@ -949,7 +1021,6 @@ describe("App", () => {
     expect(within(methodologyDrawer).getByText("A cup of water")).toBeInTheDocument();
     expect(within(methodologyDrawer).getByText("A daily intake")).toBeInTheDocument();
     expect(within(methodologyDrawer).getByText("A cup of coffee")).toBeInTheDocument();
-    expect(within(methodologyDrawer).getByText("A beef burger")).toBeInTheDocument();
     expect(within(methodologyDrawer).getByText("A pair of jeans")).toBeInTheDocument();
     expect(within(methodologyDrawer).getByText("A car")).toBeInTheDocument();
     expect(within(methodologyDrawer).getByText("A golf course per day")).toBeInTheDocument();
@@ -968,11 +1039,6 @@ describe("App", () => {
         name: /Ecological Economics DOI: The water footprint of coffee and tea consumption in the Netherlands/i
       })
     ).toHaveAttribute("href", "https://doi.org/10.1016/j.ecolecon.2007.02.022");
-    expect(
-      within(methodologyDrawer).getByRole("link", {
-        name: /Ecological Indicators DOI: Water footprint of soy milk and soy burger and equivalent animal products/i
-      })
-    ).toHaveAttribute("href", "https://doi.org/10.1016/j.ecolind.2011.12.009");
     expect(
       within(methodologyDrawer).getByRole("link", {
         name: /Sustainability Science DOI: Comparing ecological and water footprint of denim jeans and a tri-blend T-shirt/i
