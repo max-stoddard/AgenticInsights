@@ -73,6 +73,8 @@ describe("release metadata", () => {
     expect(releaseWorkflow).toContain("NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}");
     expect(releaseWorkflow).toContain("npm publish -w agentic-insights --access public --provenance");
     expect(releaseWorkflow).toContain("node ./packages/cli/scripts/prepare-github-package.mjs");
+    expect(releaseWorkflow).toContain("Set up Node.js for GitHub Packages");
+    expect(releaseWorkflow).toContain('scope: "@max-stoddard"');
     expect(releaseWorkflow).toContain("npm publish ./packages/cli/.github-package");
     expect(releaseWorkflow).toContain("https://npm.pkg.github.com");
     expect(releaseWorkflow).toContain("tag_name: ${{ env.TAG_NAME }}");

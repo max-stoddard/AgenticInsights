@@ -92,11 +92,17 @@ jobs:
       - name: Prepare GitHub Packages mirror
         run: node ./packages/cli/scripts/prepare-github-package.mjs
 
+      - name: Set up Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: "@max-stoddard"
+
       - name: Publish GitHub Packages mirror
         run: npm publish ./packages/cli/.github-package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
