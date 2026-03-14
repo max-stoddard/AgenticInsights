@@ -68,8 +68,12 @@ describe("release metadata", () => {
     expect(releaseWorkflow).toContain("NPM_TOKEN: ${{ secrets.NPM_TOKEN }}");
     expect(releaseWorkflow).toContain("ref: ${{ env.TAG_NAME }}");
     expect(releaseWorkflow).toContain("npm config delete always-auth --location=user || true");
+    expect(releaseWorkflow).toContain("Check npm publish status");
+    expect(releaseWorkflow).toContain('npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://registry.npmjs.org');
+    expect(releaseWorkflow).toContain('echo "exists=true" >> "$GITHUB_OUTPUT"');
     expect(releaseWorkflow).toContain("env.NPM_TOKEN != ''");
     expect(releaseWorkflow).toContain("env.NPM_TOKEN == ''");
+    expect(releaseWorkflow).toContain("steps.npm_status.outputs.exists != 'true'");
     expect(releaseWorkflow).toContain("NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}");
     expect(releaseWorkflow).toContain("npm publish -w agentic-insights --access public --provenance");
     expect(releaseWorkflow).toContain("node ./packages/cli/scripts/prepare-github-package.mjs");
