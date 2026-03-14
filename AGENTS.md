@@ -6,6 +6,7 @@
   - Do not add what: or why: to git message.
   - Ensure commits are small changes, not big commits.
   - Do not commit co-authored with yourself.
+  - You MUST run build and test validation before every commit and only commit if it passes. Run: `npm run lint`, `npm run test`, `npm run build`, and `npm run test:pack`.
 - All changes must align with this repo being an `npx` package accessible via `npx ai-water-usage`
   - You must ensure Windows, Linux and MacOS compatibility in all tasks.
 - Root level `README.md` is developer facing on GitHub, keep this in mind when editing it.
