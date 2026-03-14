@@ -89,6 +89,38 @@ function createCodexHome(rootDir) {
   return codexHome;
 }
 
+function createIsolatedHome(rootDir) {
+  const homeDir = path.join(rootDir, "home");
+  fs.mkdirSync(path.join(homeDir, ".claude", "projects"), { recursive: true });
+  fs.mkdirSync(path.join(homeDir, ".claude", "usage-data", "session-meta"), { recursive: true });
+  return homeDir;
+}
+
+function createChildEnv(homeDir, cacheDir) {
+  const env = {
+    ...process.env,
+    AGENTIC_INSIGHTS_CACHE_DIR: cacheDir,
+    HOME: homeDir,
+    USERPROFILE: homeDir
+  };
+
+  if (process.platform !== "win32") {
+    return env;
+  }
+
+  const resolvedHomeDir = path.resolve(homeDir);
+  const parsed = path.parse(resolvedHomeDir);
+  if (/^[A-Za-z]:\\$/.test(parsed.root)) {
+    env.HOMEDRIVE = parsed.root.slice(0, 2);
+    env.HOMEPATH = resolvedHomeDir.slice(2);
+  } else {
+    delete env.HOMEDRIVE;
+    delete env.HOMEPATH;
+  }
+
+  return env;
+}
+
 function findFreePort() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -176,7 +208,10 @@ async function waitForServer(url, onRunning) {
     try {
       const result = await request(url);
       if (result.statusCode === 200) {
-        return onRunning(result.body);
+        const ready = await onRunning(result.body);
+        if (ready) {
+          return;
+        }
       }
     } catch {
       // Keep polling until the deadline.
@@ -203,6 +238,8 @@ async function main() {
   assert.match(tarContents, /package\/dist\/index\.js/);
   assert.match(tarContents, /package\/dist\/runtime\/server\/app\.js/);
   assert.match(tarContents, /package\/dist\/runtime\/web\/index\.html/);
+  assert.match(tarContents, /package\/dist\/runtime\/node_modules\/@agentic-insights\/shared\/index\.js/);
+  assert.match(tarContents, /package\/dist\/runtime\/node_modules\/@agentic-insights\/shared\/package\.json/);
 
   const extractDir = path.join(tempRoot, "extract");
   fs.mkdirSync(extractDir, { recursive: true });
@@ -212,6 +249,7 @@ async function main() {
   linkRuntimeDependencies(packageDir);
 
   const codexHome = createCodexHome(tempRoot);
+  const homeDir = createIsolatedHome(tempRoot);
   const cacheDir = path.join(tempRoot, "cache");
   fs.mkdirSync(cacheDir, { recursive: true });
   const port = await findFreePort();
@@ -221,10 +259,7 @@ async function main() {
     [path.join(packageDir, "dist", "index.js"), "--port", String(port), "--no-open", "--codex-home", codexHome],
     {
       cwd: packageDir,
-      env: {
-        ...process.env,
-        AGENTIC_INSIGHTS_CACHE_DIR: cacheDir
-      },
+      env: createChildEnv(homeDir, cacheDir),
       stdio: ["ignore", "pipe", "pipe"]
     }
   );
@@ -238,12 +273,17 @@ async function main() {
 
   await waitForServer(`http://127.0.0.1:${port}/api/overview`, (body) => {
     const overview = JSON.parse(body);
-    assert.equal(overview.diagnostics.state, "ready");
+    if (overview.diagnostics.state !== "ready") {
+      return false;
+    }
+
     assert.equal(overview.tokenTotals.totalTokens, 120);
+    return true;
   });
 
   await waitForServer(`http://127.0.0.1:${port}/`, (body) => {
     assert.match(body, /<div id="root"><\/div>/);
+    return true;
   });
 
   assert.match(stdout, new RegExp(`Agentic Insights is running at http://127\\.0\\.0\\.1:${port}`));

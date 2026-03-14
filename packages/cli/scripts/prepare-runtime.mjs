@@ -9,6 +9,7 @@ const packageDistDir = path.join(packageDir, "dist");
 const runtimeDir = path.join(packageDistDir, "runtime");
 const serverSourceDir = path.join(repoRoot, "apps", "server", "dist", "src");
 const webSourceDir = path.join(repoRoot, "apps", "web", "dist");
+const sharedSourceDir = path.join(repoRoot, "packages", "shared", "dist");
 
 function assertDirExists(dirPath) {
   if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
@@ -34,10 +35,38 @@ function copyDir(sourceDir, targetDir) {
   }
 }
 
+function writeRuntimeSharedPackage(targetDir) {
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(targetDir, "package.json"),
+    JSON.stringify(
+      {
+        name: "@agentic-insights/shared",
+        private: true,
+        type: "module",
+        main: "./index.js",
+        types: "./index.d.ts",
+        exports: {
+          ".": {
+            types: "./index.d.ts",
+            default: "./index.js"
+          }
+        }
+      },
+      null,
+      2
+    )
+  );
+}
+
 assertDirExists(packageDistDir);
 assertDirExists(serverSourceDir);
 assertDirExists(webSourceDir);
+assertDirExists(sharedSourceDir);
 
 fs.rmSync(runtimeDir, { recursive: true, force: true });
 copyDir(serverSourceDir, path.join(runtimeDir, "server"));
 copyDir(webSourceDir, path.join(runtimeDir, "web"));
+const sharedRuntimeDir = path.join(runtimeDir, "node_modules", "@agentic-insights", "shared");
+copyDir(sharedSourceDir, sharedRuntimeDir);
+writeRuntimeSharedPackage(sharedRuntimeDir);
