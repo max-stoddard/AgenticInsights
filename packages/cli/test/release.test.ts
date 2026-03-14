@@ -18,7 +18,7 @@ describe("release metadata", () => {
     const webPackage = readJson("apps/web/package.json");
     const sharedPackage = readJson("packages/shared/package.json");
 
-    expect(rootPackage.version).toBe("0.2.0");
+    expect(rootPackage.version).toBe("0.1.0");
     expect(cliPackage.version).toBe(rootPackage.version);
     expect(serverPackage.version).toBe(rootPackage.version);
     expect(webPackage.version).toBe(rootPackage.version);
@@ -32,6 +32,51 @@ describe("release metadata", () => {
     const releaseNotesPath = path.join(repoRoot, ".github", "release-notes", `v${cliPackage.version}.md`);
 
     expect(fs.existsSync(releaseNotesPath)).toBe(true);
-    expect(fs.readFileSync(releaseNotesPath, "utf8")).toContain("major UI and visualisation improvements");
+    expect(fs.readFileSync(releaseNotesPath, "utf8")).toContain("Canonical npm launcher is now `agentic-insights`");
+  });
+
+  it("publishes the CLI under the expected npm package and GitHub repository", () => {
+    const rootPackage = readJson("package.json");
+    const cliPackage = readJson("packages/cli/package.json");
+
+    expect(rootPackage.name).toBe("agentic-insights-workspace");
+    expect(rootPackage.scripts.build).toContain("-w agentic-insights");
+    expect(rootPackage.scripts.test).toContain("-w agentic-insights");
+    expect(rootPackage.scripts.lint).toContain("-w agentic-insights");
+    expect(rootPackage.scripts["pack:cli"]).toBe("npm pack -w agentic-insights");
+
+    expect(cliPackage.name).toBe("agentic-insights");
+    expect(cliPackage.bin).toEqual({
+      "agentic-insights": "./dist/index.js"
+    });
+    expect(cliPackage.repository).toEqual({
+      type: "git",
+      url: "git+https://github.com/max-stoddard/agentic-insights.git",
+      directory: "packages/cli"
+    });
+    expect(cliPackage.homepage).toBe("https://github.com/max-stoddard/agentic-insights#readme");
+    expect(cliPackage.bugs.url).toBe("https://github.com/max-stoddard/agentic-insights/issues");
+  });
+
+  it("keeps release workflow wired to npm, GitHub Packages, and GitHub Releases", () => {
+    const releaseWorkflow = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "release.yml"), "utf8");
+
+    expect(releaseWorkflow).toContain("packages: write");
+    expect(releaseWorkflow).toContain("npm publish -w agentic-insights --access public --provenance");
+    expect(releaseWorkflow).toContain("node ./packages/cli/scripts/prepare-github-package.mjs");
+    expect(releaseWorkflow).toContain("npm publish ./packages/cli/.github-package");
+    expect(releaseWorkflow).toContain("https://npm.pkg.github.com");
+    expect(releaseWorkflow).toContain("softprops/action-gh-release@v2");
+  });
+
+  it("defines the generated GitHub Packages mirror metadata", () => {
+    const mirrorScript = fs.readFileSync(
+      path.join(repoRoot, "packages", "cli", "scripts", "prepare-github-package.mjs"),
+      "utf8"
+    );
+
+    expect(mirrorScript).toContain('name: "@max-stoddard/agentic-insights"');
+    expect(mirrorScript).toContain('"agentic-insights": "./dist/index.js"');
+    expect(mirrorScript).toContain("https://npm.pkg.github.com");
   });
 });

@@ -1,13 +1,13 @@
 # Agentic Insights
 
-Local TypeScript dashboard that reads Codex and Claude Code usage artifacts from your machine and estimates water usage from token activity.
+Local TypeScript dashboard that reads Codex and Claude Code usage artifacts from your machine and helps you understand coding-agent activity, starting with water-impact estimates from token usage.
 
 ## Launch in one command
 
 Requires Node `18+`.
 
 ```bash
-npx agentic-insights@latest
+npx agentic-insights@0.1.0
 ```
 
 That command starts a local server, opens the dashboard in your browser, and reads local coding-agent usage from your own machine.
@@ -180,23 +180,20 @@ npm run test:pack
 
 ## Release
 
-After the initial npm publish, releases use npm trusted publishing from GitHub Actions.
+Releases are cut from GitHub Actions on tags like `v0.1.0`.
 
-Before the first publish, verify `agentic-insights` is available on npm.
+The release workflow:
 
-Bootstrap for the first release only:
+1. Runs `npm run lint`, `npm run test`, `npm run build`, and `npm run test:pack`
+2. Publishes `agentic-insights` to npm with trusted publishing and provenance
+3. Generates a scoped mirror package and publishes `@max-stoddard/agentic-insights` to GitHub Packages
+4. Creates a GitHub Release from `.github/release-notes/vX.Y.Z.md`
 
-1. Create an npm automation token on the npm account that will own `agentic-insights`.
-2. Add that token as the GitHub Actions secret `NPM_TOKEN`.
-3. Publish the first version from the tagged workflow using that token.
+Before cutting a release:
 
-After the first successful publish:
-
-1. In the npm package settings for `agentic-insights`, add `max-stoddard/AgenticInsights` and `.github/workflows/release.yml` as a trusted publisher.
-2. Add a matching release notes file at `.github/release-notes/vX.Y.Z.md` before cutting the tag.
-3. Cut the next release tag and confirm the workflow publishes with provenance and no token-based auth.
-4. Delete the `NPM_TOKEN` GitHub Actions secret once trusted publishing is verified.
-5. Deprecate `ai-water-usage` on npm with a message directing users to `agentic-insights`.
+1. Verify `agentic-insights` is available on npm and `@max-stoddard/agentic-insights` is available on GitHub Packages
+2. Confirm npm trusted publishing is configured for `max-stoddard/agentic-insights` and `.github/workflows/release.yml`
+3. Add a matching release notes file at `.github/release-notes/vX.Y.Z.md`
 
 ## References
 

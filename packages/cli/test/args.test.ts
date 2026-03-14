@@ -1,9 +1,13 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { CliArgumentError, parseCliArgs } from "../src/args.js";
+import { CliArgumentError, getHelpText, parseCliArgs } from "../src/args.js";
 import { resolveCodexHome } from "../src/config.js";
 
 describe("parseCliArgs", () => {
+  it("shows the published command in help text", () => {
+    expect(getHelpText()).toContain("agentic-insights [options]");
+  });
+
   it("parses the supported launcher flags", () => {
     expect(
       parseCliArgs(["--port", "4100", "--host", "0.0.0.0", "--codex-home", "./custom", "--no-open"])

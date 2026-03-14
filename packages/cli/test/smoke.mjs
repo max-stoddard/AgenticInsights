@@ -20,6 +20,15 @@ let child = null;
 let stdout = "";
 let stderr = "";
 
+function getNpmExecArgs(args) {
+  const npmExecPath = process.env.npm_execpath;
+  if (npmExecPath) {
+    return [process.execPath, [npmExecPath, ...args]];
+  }
+
+  return [process.platform === "win32" ? "npm.cmd" : "npm", args];
+}
+
 function lastTarballName(output) {
   const lines = output
     .split(/\r?\n/)
@@ -224,7 +233,8 @@ async function waitForServer(url, onRunning) {
 }
 
 async function main() {
-  const packOutput = execFileSync("npm", ["pack", "-w", "agentic-insights", "--silent"], {
+  const [npmCommand, npmArgs] = getNpmExecArgs(["pack", "-w", "agentic-insights", "--silent"]);
+  const packOutput = execFileSync(npmCommand, npmArgs, {
     cwd: repoRoot,
     encoding: "utf8"
   });

@@ -1,11 +1,11 @@
 # Agentic Insights
 
-`agentic-insights` launches a local dashboard that reads your Codex and Claude Code usage artifacts and estimates the water impact of your coding-agent usage.
+`agentic-insights` launches a local dashboard that reads your Codex and Claude Code usage artifacts and helps you understand coding-agent usage, starting with water-impact estimates.
 
 ## Run
 
 ```bash
-npx agentic-insights@latest
+npx agentic-insights@0.1.0
 ```
 
 That command starts a local server, opens the dashboard in your browser, and reads usage data from your machine.
@@ -40,5 +40,5 @@ Override the Codex location with `--codex-home` or `CODEX_HOME=/path/to/.codex`.
 
 ## Repository
 
-- Source: https://github.com/max-stoddard/AgenticInsights
-- Issues: https://github.com/max-stoddard/AgenticInsights/issues
+- Source: https://github.com/max-stoddard/agentic-insights
+- Issues: https://github.com/max-stoddard/agentic-insights/issues

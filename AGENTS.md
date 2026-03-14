@@ -6,7 +6,7 @@
   - Do not add what: or why: to git message.
   - Ensure commits are small changes, not big commits.
   - Do not commit co-authored with yourself.
-- All changes must align with this repo being an `npx` package accessible via `npx ai-water-usage`
+- All changes must align with this repo being an `npx` package accessible via `npx agentic-insights`
   - You must ensure Windows, Linux and MacOS compatibility in all tasks.
 - Root level `README.md` is developer facing on GitHub, keep this in mind when editing it.
 - Lanaguage on the website should be friendly, easy to understand, concise and high level, focussed on helping the user of the website understand what the parts of the website are trying to show them.

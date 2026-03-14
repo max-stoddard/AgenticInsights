@@ -1,16 +1,17 @@
 {
   "name": "agentic-insights",
-  "version": "0.2.0",
-  "description": "Launch a local dashboard that estimates the water impact of Codex usage",
+  "version": "0.1.0",
+  "description": "Launch a local dashboard for coding-agent insights with water-impact estimates",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/max-stoddard/AgenticInsights.git"
+    "url": "git+https://github.com/max-stoddard/agentic-insights.git",
+    "directory": "packages/cli"
   },
-  "homepage": "https://github.com/max-stoddard/AgenticInsights#readme",
+  "homepage": "https://github.com/max-stoddard/agentic-insights#readme",
   "bugs": {
-    "url": "https://github.com/max-stoddard/AgenticInsights/issues"
+    "url": "https://github.com/max-stoddard/agentic-insights/issues"
   },
   "bin": {
     "agentic-insights": "./dist/index.js"
