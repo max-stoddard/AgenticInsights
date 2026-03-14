@@ -2,6 +2,8 @@ import fs from "node:fs";
 import type {
   Bucket,
   CoverageClassification,
+  IndexingPhase,
+  IndexingStatus,
   MethodologyResponse,
   ModelUsageEntry,
   ModelUsageStatus,
@@ -30,6 +32,24 @@ import {
   getPricingEntry
 } from "./pricing.js";
 import type { ClassifiedUsageEvent, CoverageDetailAggregate, DataSnapshot, PromptRecord, RawUsageEvent } from "./types.js";
+
+interface DiscoveredInputs {
+  codexHome: string;
+  claudeHome: string;
+  dataPath: string;
+  signature: string;
+  fingerprint: Array<{ path: string; mtimeMs: number; size: number }>;
+  foundArtifacts: boolean;
+  codexConfiguredInvalid: boolean;
+  codexFiles: Array<{ path: string; mtimeMs: number; size: number }>;
+  claudeProjectFiles: Array<{ path: string; mtimeMs: number; size: number }>;
+  claudeSessionMetaFiles: Array<{ path: string; mtimeMs: number; size: number }>;
+  tuiLogPath: string;
+}
+
+interface DashboardServiceOptions {
+  scheduleIndexingTask?: (task: () => void) => void;
+}
 
 function zeroRange(): WaterRange {
   return { low: 0, central: 0, high: 0 };
@@ -98,6 +118,14 @@ function createSnapshot(signature: string, diagnostics: OverviewDiagnostics): Da
     calibration: null,
     lastIndexedAt: null,
     diagnostics
+  };
+}
+
+function createIndexingStatus(phase: IndexingPhase, startedAt: number, updatedAt: number = startedAt): IndexingStatus {
+  return {
+    phase,
+    startedAt,
+    updatedAt
   };
 }
 
@@ -368,6 +396,65 @@ function buildWeeklyGrowth(snapshot: DataSnapshot, timeZone: string, nowTs: numb
   };
 }
 
+function buildOverviewFromSnapshot(
+  snapshot: DataSnapshot,
+  timeZone: string,
+  options: {
+    diagnostics?: OverviewDiagnostics;
+    indexing?: IndexingStatus | null;
+  } = {}
+): OverviewResponse {
+  const coverageSummary = buildCoverageSummary(snapshot);
+  const waterLitres = zeroRange();
+  let totalTokens = 0;
+  let supportedTokens = 0;
+  let excludedTokens = 0;
+  let unestimatedTokens = 0;
+  let supportedEvents = 0;
+  let excludedEvents = 0;
+  let tokenOnlyEvents = 0;
+
+  for (const event of snapshot.events) {
+    totalTokens += event.totalTokens;
+    sumRange(waterLitres, event.waterLitres);
+
+    if (event.classification === "supported") {
+      supportedTokens += event.totalTokens;
+      supportedEvents += 1;
+    } else if (event.classification === "excluded") {
+      excludedTokens += event.totalTokens;
+      excludedEvents += 1;
+    } else {
+      unestimatedTokens += event.totalTokens;
+      tokenOnlyEvents += 1;
+    }
+  }
+
+  return {
+    tokenTotals: {
+      totalTokens,
+      supportedTokens,
+      excludedTokens,
+      unestimatedTokens
+    },
+    waterLitres,
+    coverage: {
+      supportedEvents,
+      excludedEvents,
+      tokenOnlyEvents
+    },
+    coverageSummary,
+    weeklyGrowth: buildWeeklyGrowth(snapshot, timeZone),
+    modelUsage: buildModelUsage(snapshot.coverageDetails),
+    coverageDetails: snapshot.coverageDetails,
+    exclusions: snapshot.exclusions,
+    lastIndexedAt: snapshot.lastIndexedAt,
+    calibration: snapshot.calibration,
+    indexing: options.indexing ?? null,
+    diagnostics: options.diagnostics ?? snapshot.diagnostics
+  };
+}
+
 function classifyEvents(rawEvents: RawUsageEvent[], signature: string): Pick<DataSnapshot, "events" | "coverageDetails" | "exclusions" | "calibration"> {
   const supportedCosts = rawEvents
     .flatMap((event) => {
@@ -485,64 +572,41 @@ function classifyEvents(rawEvents: RawUsageEvent[], signature: string): Pick<Dat
 }
 
 export class DashboardService {
-  private cachedSnapshot: DataSnapshot | null = null;
+  private lastCompletedSnapshot: DataSnapshot | null = null;
+  private lastCompletedSignature: string | null = null;
+  private indexingStatus: IndexingStatus | null = null;
+  private indexingPromise: Promise<void> | null = null;
   private dayTimeseriesCache = new Map<string, TimeseriesPoint[]>();
   private timeseriesCache = new Map<string, TimeseriesPoint[]>();
+  private scheduleIndexingTask: (task: () => void) => void;
+
+  public constructor(options: DashboardServiceOptions = {}) {
+    this.scheduleIndexingTask = options.scheduleIndexingTask ?? ((task) => queueMicrotask(task));
+  }
 
   public getOverview(timeZone: string): OverviewResponse {
-    const snapshot = this.getSnapshot();
-    const coverageSummary = buildCoverageSummary(snapshot);
-    const waterLitres = zeroRange();
-    let totalTokens = 0;
-    let supportedTokens = 0;
-    let excludedTokens = 0;
-    let unestimatedTokens = 0;
-    let supportedEvents = 0;
-    let excludedEvents = 0;
-    let tokenOnlyEvents = 0;
-
-    for (const event of snapshot.events) {
-      totalTokens += event.totalTokens;
-      sumRange(waterLitres, event.waterLitres);
-
-      if (event.classification === "supported") {
-        supportedTokens += event.totalTokens;
-        supportedEvents += 1;
-      } else if (event.classification === "excluded") {
-        excludedTokens += event.totalTokens;
-        excludedEvents += 1;
-      } else {
-        unestimatedTokens += event.totalTokens;
-        tokenOnlyEvents += 1;
-      }
+    const discovery = this.discoverInputs();
+    if (discovery instanceof Error) {
+      return buildOverviewFromSnapshot(this.cacheCompletedSnapshot(this.createReadErrorSnapshot(discovery)), timeZone);
     }
 
-    return {
-      tokenTotals: {
-        totalTokens,
-        supportedTokens,
-        excludedTokens,
-        unestimatedTokens
-      },
-      waterLitres,
-      coverage: {
-        supportedEvents,
-        excludedEvents,
-        tokenOnlyEvents
-      },
-      coverageSummary,
-      weeklyGrowth: buildWeeklyGrowth(snapshot, timeZone),
-      modelUsage: buildModelUsage(snapshot.coverageDetails),
-      coverageDetails: snapshot.coverageDetails,
-      exclusions: snapshot.exclusions,
-      lastIndexedAt: snapshot.lastIndexedAt,
-      calibration: snapshot.calibration,
-      diagnostics: snapshot.diagnostics
-    };
+    if (this.lastCompletedSignature === discovery.signature && this.lastCompletedSnapshot) {
+      return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone);
+    }
+
+    if (!this.indexingPromise) {
+      this.startIndexing(discovery);
+    }
+
+    if (this.lastCompletedSignature === discovery.signature && this.lastCompletedSnapshot && !this.indexingPromise) {
+      return buildOverviewFromSnapshot(this.lastCompletedSnapshot, timeZone);
+    }
+
+    return this.buildIndexingOverview(timeZone, discovery.dataPath, discovery.signature);
   }
 
   public getTimeseries(bucket: Bucket, timeZone: string): TimeseriesResponse {
-    const snapshot = this.getSnapshot();
+    const snapshot = this.getMaterializedSnapshot();
     const cacheKey = this.getTimeseriesCacheKey(snapshot.signature, bucket, timeZone);
     const cached = this.timeseriesCache.get(cacheKey);
 
@@ -564,7 +628,7 @@ export class DashboardService {
   }
 
   public getMethodology(): MethodologyResponse {
-    const snapshot = this.getSnapshot();
+    const snapshot = this.getMaterializedSnapshot();
     return {
       pricingTable: snapshot.pricingTable,
       benchmarkCoefficients: snapshot.benchmarks,
@@ -575,7 +639,7 @@ export class DashboardService {
     };
   }
 
-  private getSnapshot(): DataSnapshot {
+  private discoverInputs(): DiscoveredInputs | Error {
     const codexHomeConfig = getCodexHomeConfig();
     const codexHome = codexHomeConfig.path;
     const claudeHome = getDefaultClaudeHome();
@@ -593,36 +657,8 @@ export class DashboardService {
         codexIsDirectory && fs.existsSync(tuiLogPath)
           ? [{ path: tuiLogPath, mtimeMs: Math.floor(fs.statSync(tuiLogPath).mtimeMs), size: fs.statSync(tuiLogPath).size }]
           : [];
-      const codexEvents = codexIsDirectory
-        ? (() => {
-            const fallbackMap = parseTuiFallback(tuiLogPath);
-            return codexFiles.flatMap((file) => parseSessionFile(file.path, fallbackMap));
-          })()
-        : [];
-      const codexPrompts = codexIsDirectory ? codexFiles.flatMap((file) => parseSessionPrompts(file.path)) : [];
-
       const claudeProjectFiles = claudeIsDirectory ? listClaudeProjectFiles(claudeHome) : [];
       const claudeSessionMetaFiles = claudeIsDirectory ? listClaudeSessionMetaFiles(claudeHome) : [];
-      const claudeSessionModels = new Map<string, string>();
-      const parsedClaudeProjects = claudeProjectFiles.map((file) => parseClaudeProjectFile(file.path));
-      const claudeProjectEvents = parsedClaudeProjects.flatMap((parsed) => {
-        for (const [sessionId, model] of parsed.sessionModels.entries()) {
-          if (!claudeSessionModels.has(sessionId)) {
-            claudeSessionModels.set(sessionId, model);
-          }
-        }
-        return parsed.events;
-      });
-      const claudeProjectPrompts = parsedClaudeProjects.flatMap((parsed) => parsed.prompts);
-      const claudeMetaEvents = claudeSessionMetaFiles.flatMap((file) =>
-        parseClaudeSessionMetaFile(file.path, {
-          sessionModels: claudeSessionModels,
-          sessionsWithProjectEvents: new Set(claudeProjectEvents.map((event) => event.sessionId))
-        })
-      );
-
-      const rawEvents = dedupeEvents([...codexEvents, ...claudeProjectEvents, ...claudeMetaEvents]);
-      const promptRecords = dedupePrompts([...codexPrompts, ...claudeProjectPrompts]);
       const fingerprint = [
         ...codexFiles.map((file) => ({ path: file.path, mtimeMs: file.mtimeMs, size: file.size })),
         ...logFingerprint,
@@ -632,66 +668,152 @@ export class DashboardService {
       const foundArtifacts = fingerprint.length > 0;
       const codexConfiguredInvalid =
         codexHomeConfig.fromEnv && (!codexExists || (codexExists && !codexIsDirectory));
-      const diagnostics =
-        rawEvents.length > 0 || promptRecords.length > 0
-          ? createDiagnostics("ready", dataPath, null)
-          : codexConfiguredInvalid
-            ? createDiagnostics(
-                "read_error",
-                dataPath,
-                !codexExists ? "Configured Codex home does not exist." : "Configured Codex home is not a directory."
-              )
-            : createDiagnostics("no_data", dataPath, getNoDataMessage(foundArtifacts));
       const signature = buildSignature({
         codexHome,
         claudeHome,
-        codexHomeState: diagnostics.state === "ready" ? "ready" : "empty",
+        codexHomeState: codexIsDirectory ? "ready" : "empty",
         fileFingerprint: fingerprint
       });
-
-      if (this.cachedSnapshot?.signature === signature) {
-        return this.cachedSnapshot;
-      }
-
-      const classified = classifyEvents(rawEvents, signature);
-      const lastIndexedAt = fingerprint.length > 0 ? Math.max(...fingerprint.map((file) => file.mtimeMs)) : null;
-
-      return this.cacheSnapshot({
+      return {
+        codexHome,
+        claudeHome,
+        dataPath,
         signature,
-        events: classified.events,
-        promptRecords,
-        coverageDetails: classified.coverageDetails,
-        exclusions: classified.exclusions,
-        pricingTable: PRICING_TABLE,
-        pricingCatalog: PRICING_CATALOG_METADATA,
-        sourcesByTab: getMethodologySourcesByTab(rawEvents.map((event) => event.provider)),
-        benchmarks: BENCHMARK_COEFFICIENTS,
-        calibration: classified.calibration,
-        lastIndexedAt,
-        diagnostics
-      });
+        fingerprint,
+        foundArtifacts,
+        codexConfiguredInvalid,
+        codexFiles,
+        claudeProjectFiles,
+        claudeSessionMetaFiles,
+        tuiLogPath
+      };
     } catch (error) {
-      const diagnostics = createDiagnostics("read_error", dataPath, getErrorMessage(error));
-      return this.getOrCacheSnapshot(
-        createSnapshot(
-          buildSignature({
-            codexHome,
-            claudeHome,
-            codexHomeState: "read_error",
-            fileFingerprint: []
-          }),
-          diagnostics
-        )
-      );
+      return new Error(getErrorMessage(error));
     }
   }
 
-  private getOrCacheSnapshot(snapshot: DataSnapshot): DataSnapshot {
-    if (this.cachedSnapshot?.signature === snapshot.signature) {
-      return this.cachedSnapshot;
+  private buildIndexingOverview(timeZone: string, dataPath: string, signature: string): OverviewResponse {
+    const diagnostics = createDiagnostics("indexing", dataPath, null);
+    const indexing = this.indexingStatus;
+    const snapshot = this.lastCompletedSnapshot ?? createSnapshot(signature, diagnostics);
+    return buildOverviewFromSnapshot(snapshot, timeZone, { diagnostics, indexing });
+  }
+
+  private getMaterializedSnapshot(): DataSnapshot {
+    const discovery = this.discoverInputs();
+    if (discovery instanceof Error) {
+      return this.cacheCompletedSnapshot(this.createReadErrorSnapshot(discovery));
     }
 
-    return this.cacheSnapshot(snapshot);
+    if (this.lastCompletedSignature === discovery.signature && this.lastCompletedSnapshot) {
+      return this.lastCompletedSnapshot;
+    }
+
+    return this.cacheCompletedSnapshot(this.buildSnapshot(discovery));
+  }
+
+  private buildSnapshot(discovery: DiscoveredInputs): DataSnapshot {
+    const dataPath = discovery.dataPath;
+    const startedAt = this.indexingStatus?.startedAt ?? Date.now();
+    this.setIndexingPhase("parsing", startedAt);
+
+    const fallbackMap = parseTuiFallback(discovery.tuiLogPath);
+    const codexEvents = discovery.codexFiles.flatMap((file) => parseSessionFile(file.path, fallbackMap));
+    const codexPrompts = discovery.codexFiles.flatMap((file) => parseSessionPrompts(file.path));
+
+    const claudeSessionModels = new Map<string, string>();
+    const parsedClaudeProjects = discovery.claudeProjectFiles.map((file) => parseClaudeProjectFile(file.path));
+    const claudeProjectEvents = parsedClaudeProjects.flatMap((parsed) => {
+      for (const [sessionId, model] of parsed.sessionModels.entries()) {
+        if (!claudeSessionModels.has(sessionId)) {
+          claudeSessionModels.set(sessionId, model);
+        }
+      }
+      return parsed.events;
+    });
+    const claudeProjectPrompts = parsedClaudeProjects.flatMap((parsed) => parsed.prompts);
+    const claudeMetaEvents = discovery.claudeSessionMetaFiles.flatMap((file) =>
+      parseClaudeSessionMetaFile(file.path, {
+        sessionModels: claudeSessionModels,
+        sessionsWithProjectEvents: new Set(claudeProjectEvents.map((event) => event.sessionId))
+      })
+    );
+
+    const rawEvents = dedupeEvents([...codexEvents, ...claudeProjectEvents, ...claudeMetaEvents]);
+    const promptRecords = dedupePrompts([...codexPrompts, ...claudeProjectPrompts]);
+    const diagnostics =
+      rawEvents.length > 0 || promptRecords.length > 0
+        ? createDiagnostics("ready", dataPath, null)
+        : discovery.codexConfiguredInvalid
+          ? createDiagnostics(
+              "read_error",
+              dataPath,
+              !fs.existsSync(discovery.codexHome) ? "Configured Codex home does not exist." : "Configured Codex home is not a directory."
+            )
+          : createDiagnostics("no_data", dataPath, getNoDataMessage(discovery.foundArtifacts));
+
+    this.setIndexingPhase("estimating", startedAt);
+    const classified = classifyEvents(rawEvents, discovery.signature);
+
+    this.setIndexingPhase("finalizing", startedAt);
+    const lastIndexedAt = discovery.fingerprint.length > 0 ? Math.max(...discovery.fingerprint.map((file) => file.mtimeMs)) : null;
+
+    return {
+      signature: discovery.signature,
+      events: classified.events,
+      promptRecords,
+      coverageDetails: classified.coverageDetails,
+      exclusions: classified.exclusions,
+      pricingTable: PRICING_TABLE,
+      pricingCatalog: PRICING_CATALOG_METADATA,
+      sourcesByTab: getMethodologySourcesByTab(rawEvents.map((event) => event.provider)),
+      benchmarks: BENCHMARK_COEFFICIENTS,
+      calibration: classified.calibration,
+      lastIndexedAt,
+      diagnostics
+    };
+  }
+
+  private startIndexing(discovery: DiscoveredInputs): void {
+    const startedAt = Date.now();
+    let resolveIndexing!: () => void;
+    this.indexingStatus = createIndexingStatus("discovering", startedAt);
+    this.indexingPromise = new Promise<void>((resolve) => {
+      resolveIndexing = resolve;
+    });
+    this.scheduleIndexingTask(() => {
+      try {
+        const snapshot = this.buildSnapshot(discovery);
+        this.cacheCompletedSnapshot(snapshot);
+      } catch (error) {
+        this.cacheCompletedSnapshot(this.createReadErrorSnapshot(error));
+      } finally {
+        this.indexingPromise = null;
+        this.indexingStatus = null;
+        resolveIndexing();
+      }
+    });
+  }
+
+  private createReadErrorSnapshot(error: unknown): DataSnapshot {
+    const codexHome = getCodexHomeConfig().path;
+    const claudeHome = getDefaultClaudeHome();
+    const dataPath = getMonitoredDataPath(codexHome, claudeHome);
+    const diagnostics = createDiagnostics("read_error", dataPath, getErrorMessage(error));
+
+    return createSnapshot(
+      buildSignature({
+        codexHome,
+        claudeHome,
+        codexHomeState: "read_error",
+        fileFingerprint: []
+      }),
+      diagnostics
+    );
+  }
+
+  private setIndexingPhase(phase: IndexingPhase, startedAt: number): void {
+    this.indexingStatus = createIndexingStatus(phase, startedAt, Date.now());
   }
 
   private getDayTimeseries(snapshot: DataSnapshot, timeZone: string): TimeseriesPoint[] {
@@ -711,13 +833,14 @@ export class DashboardService {
     return `${signature}|${bucket}|${timeZone}`;
   }
 
-  private cacheSnapshot(snapshot: DataSnapshot): DataSnapshot {
-    if (this.cachedSnapshot?.signature !== snapshot.signature) {
+  private cacheCompletedSnapshot(snapshot: DataSnapshot): DataSnapshot {
+    if (this.lastCompletedSnapshot?.signature !== snapshot.signature) {
       this.dayTimeseriesCache.clear();
       this.timeseriesCache.clear();
     }
 
-    this.cachedSnapshot = snapshot;
+    this.lastCompletedSnapshot = snapshot;
+    this.lastCompletedSignature = snapshot.signature;
     return snapshot;
   }
 }

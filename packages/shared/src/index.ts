@@ -79,7 +79,15 @@ export interface CalibrationSnapshot {
   supportedMedianSource: string;
 }
 
-export type DiagnosticsState = "ready" | "no_data" | "read_error";
+export type DiagnosticsState = "ready" | "no_data" | "read_error" | "indexing";
+
+export type IndexingPhase = "discovering" | "parsing" | "estimating" | "finalizing";
+
+export interface IndexingStatus {
+  phase: IndexingPhase;
+  startedAt: number;
+  updatedAt: number;
+}
 
 export interface OverviewDiagnostics {
   state: DiagnosticsState;
@@ -98,6 +106,7 @@ export interface OverviewResponse {
   exclusions: ExclusionSummary[];
   lastIndexedAt: number | null;
   calibration: CalibrationSnapshot | null;
+  indexing: IndexingStatus | null;
   diagnostics: OverviewDiagnostics;
 }
 

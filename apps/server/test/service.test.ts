@@ -61,6 +61,29 @@ function createSessionRows(
   ];
 }
 
+function createImmediateDashboardService() {
+  return new DashboardService({
+    scheduleIndexingTask: (task) => task()
+  });
+}
+
+function createDeferredScheduler() {
+  const tasks: Array<() => void> = [];
+
+  return {
+    schedule(task: () => void) {
+      tasks.push(task);
+    },
+    runNext() {
+      const task = tasks.shift();
+      task?.();
+    },
+    pendingCount() {
+      return tasks.length;
+    }
+  };
+}
+
 beforeEach(() => {
   previousCodexHome = process.env.CODEX_HOME;
   previousCacheDir = process.env.AGENTIC_INSIGHTS_CACHE_DIR;
@@ -103,7 +126,7 @@ describe("DashboardService", () => {
 
     const daySpy = vi.spyOn(aggregation, "aggregateDayTimeseries");
     const bucketSpy = vi.spyOn(aggregation, "aggregateFromDayBuckets");
-    const service = new DashboardService();
+    const service = createImmediateDashboardService();
 
     const firstMonth = service.getTimeseries("month", "UTC");
     const secondMonth = service.getTimeseries("month", "UTC");
@@ -122,6 +145,99 @@ describe("DashboardService", () => {
     expect(refreshedMonth.points[0]?.tokens).toBe(200);
     expect(daySpy).toHaveBeenCalledTimes(2);
     expect(bucketSpy).toHaveBeenCalledTimes(3);
+
+    codex.cleanup();
+    claude.cleanup();
+    cache.cleanup();
+  });
+
+  it("returns indexing first and then ready after the background snapshot completes", () => {
+    const codex = createCodexHome();
+    const claude = createClaudeHome();
+    const cache = createCacheDir();
+    const scheduler = createDeferredScheduler();
+    process.env.CODEX_HOME = codex.dir;
+    process.env.HOME = claude.homeDir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+
+    writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
+
+    const service = new DashboardService({
+      scheduleIndexingTask: scheduler.schedule
+    });
+
+    const firstOverview = service.getOverview("UTC");
+    expect(firstOverview.diagnostics.state).toBe("indexing");
+    expect(firstOverview.indexing?.phase).toBe("discovering");
+    expect(firstOverview.tokenTotals.totalTokens).toBe(0);
+
+    scheduler.runNext();
+
+    const secondOverview = service.getOverview("UTC");
+    expect(secondOverview.diagnostics.state).toBe("ready");
+    expect(secondOverview.indexing).toBeNull();
+    expect(secondOverview.tokenTotals.totalTokens).toBe(120);
+
+    codex.cleanup();
+    claude.cleanup();
+    cache.cleanup();
+  });
+
+  it("transitions from indexing to no_data only after the background snapshot completes", () => {
+    const codex = createCodexHome();
+    const claude = createClaudeHome();
+    const cache = createCacheDir();
+    const scheduler = createDeferredScheduler();
+    process.env.CODEX_HOME = codex.dir;
+    process.env.HOME = claude.homeDir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+
+    const service = new DashboardService({
+      scheduleIndexingTask: scheduler.schedule
+    });
+
+    const firstOverview = service.getOverview("UTC");
+    expect(firstOverview.diagnostics.state).toBe("indexing");
+    expect(firstOverview.indexing?.phase).toBe("discovering");
+
+    scheduler.runNext();
+
+    const secondOverview = service.getOverview("UTC");
+    expect(secondOverview.diagnostics.state).toBe("no_data");
+    expect(secondOverview.indexing).toBeNull();
+
+    codex.cleanup();
+    claude.cleanup();
+    cache.cleanup();
+  });
+
+  it("deduplicates concurrent overview requests while indexing is already active", () => {
+    const codex = createCodexHome();
+    const claude = createClaudeHome();
+    const cache = createCacheDir();
+    const scheduler = createDeferredScheduler();
+    process.env.CODEX_HOME = codex.dir;
+    process.env.HOME = claude.homeDir;
+    process.env.AGENTIC_INSIGHTS_CACHE_DIR = cache.dir;
+
+    writeJsonlFile(codex.dir, "sessions/2026/03/09/session-a.jsonl", createSessionRows("session-a", "2026-03-09T10:00:00.000Z", 120));
+
+    const service = new DashboardService({
+      scheduleIndexingTask: scheduler.schedule
+    });
+
+    const firstOverview = service.getOverview("UTC");
+    const secondOverview = service.getOverview("UTC");
+
+    expect(firstOverview.diagnostics.state).toBe("indexing");
+    expect(secondOverview.diagnostics.state).toBe("indexing");
+    expect(scheduler.pendingCount()).toBe(1);
+
+    scheduler.runNext();
+
+    const readyOverview = service.getOverview("UTC");
+    expect(readyOverview.diagnostics.state).toBe("ready");
+    expect(readyOverview.tokenTotals.totalTokens).toBe(120);
 
     codex.cleanup();
     claude.cleanup();
@@ -183,7 +299,7 @@ describe("DashboardService", () => {
       }
     ]);
 
-    const service = new DashboardService();
+    const service = createImmediateDashboardService();
     const overview = service.getOverview("UTC");
 
     expect(overview.weeklyGrowth).toEqual({
@@ -298,7 +414,7 @@ describe("DashboardService", () => {
       })
     );
 
-    const service = new DashboardService();
+    const service = createImmediateDashboardService();
     const overview = service.getOverview("UTC");
 
     expect(overview.coverageDetails).toEqual(
@@ -458,7 +574,7 @@ describe("DashboardService", () => {
       output_tokens: 10
     });
 
-    const service = new DashboardService();
+    const service = createImmediateDashboardService();
     const overview = service.getOverview("UTC");
 
     expect(overview.coverageSummary).toEqual({

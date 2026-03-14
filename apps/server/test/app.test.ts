@@ -191,6 +191,13 @@ describe("API routes", () => {
     writeTuiLog(codex.dir, "2026-03-09T11:00:02.000Z INFO thread_id=fallback-only total_usage_tokens=60");
 
     const app = createApp();
+    const indexingResponse = await app.inject({ method: "GET", url: "/api/overview" });
+    const indexingOverview = indexingResponse.json();
+    expect(indexingOverview.diagnostics.state).toBe("indexing");
+    expect(indexingOverview.indexing?.phase).toBe("discovering");
+
+    await Promise.resolve();
+
     const overviewResponse = await app.inject({ method: "GET", url: "/api/overview" });
     const overview = overviewResponse.json();
     expect(overview.tokenTotals.totalTokens).toBe(360);
@@ -390,6 +397,7 @@ describe("API routes", () => {
       exclusions: [],
       lastIndexedAt: null,
       calibration: null,
+      indexing: null,
       diagnostics: {
         state: "no_data",
         codexHome: "/tmp/.codex",
