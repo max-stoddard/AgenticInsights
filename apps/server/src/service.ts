@@ -277,21 +277,17 @@ function buildModelStatus(
   });
 
   const notes: string[] = [];
-  const hasExternalPricing = getPricingEntry(item.provider, item.model) !== null;
 
   if (dominantStatus && dominantStatus.status === "unknown" && item.unknownTokens === item.totalTokens) {
     notes.push("pricing not available yet");
   }
 
   if (dominantStatus && dominantStatus.status === "local" && item.localTokens === item.totalTokens) {
-    notes.push("local usage");
-    if (!hasExternalPricing) {
-      notes.push("pricing not available yet");
-    }
+    notes.push("Ran on local hardware");
   }
 
   if (item.localTokens > 0 && item.localTokens < item.totalTokens) {
-    notes.push("includes local usage");
+    notes.push("includes local hardware usage");
   }
 
   if (item.unknownTokens > 0 && item.unknownTokens < item.totalTokens) {
@@ -308,7 +304,7 @@ function buildModelStatus(
   };
 }
 
-function buildModelUsage(coverageDetails: CoverageDetailAggregate[]): ModelUsageEntry[] {
+function buildModelUsage(events: ClassifiedUsageEvent[]): ModelUsageEntry[] {
   const usage = new Map<
     string,
     ModelUsageEntry & {
@@ -317,40 +313,44 @@ function buildModelUsage(coverageDetails: CoverageDetailAggregate[]): ModelUsage
     }
   >();
 
-  for (const detail of coverageDetails) {
-    if (isSyntheticModel(detail.provider, detail.model)) {
+  for (const event of events) {
+    const displayIdentity = canonicalizeDisplayIdentity(event.provider, event.model);
+
+    if (isSyntheticModel(displayIdentity.provider, displayIdentity.model)) {
       continue;
     }
 
-    const key = `${detail.provider}:${detail.model}`;
+    const key = `${displayIdentity.provider}:${displayIdentity.model}`;
     const current = usage.get(key) ?? {
-      provider: detail.provider,
-      model: detail.model,
+      provider: displayIdentity.provider,
+      model: displayIdentity.model,
       totalTokens: 0,
       events: 0,
       supportedTokens: 0,
       excludedTokens: 0,
       unestimatedTokens: 0,
+      apiCostUsd: 0,
       status: "allowed" as const,
       statusNote: null,
       localTokens: 0,
       unknownTokens: 0
     };
 
-    current.totalTokens += detail.tokens;
-    current.events += detail.events;
+    current.totalTokens += event.totalTokens;
+    current.events += 1;
+    current.apiCostUsd += event.eventCostUsd ?? 0;
 
-    if (detail.classification === "supported") {
-      current.supportedTokens += detail.tokens;
-    } else if (detail.classification === "excluded") {
-      current.excludedTokens += detail.tokens;
-      if (detail.reason?.startsWith("Local usage: ")) {
-        current.localTokens += detail.tokens;
-      } else if (detail.reason?.startsWith("Unknown model: ")) {
-        current.unknownTokens += detail.tokens;
+    if (event.classification === "supported") {
+      current.supportedTokens += event.totalTokens;
+    } else if (event.classification === "excluded") {
+      current.excludedTokens += event.totalTokens;
+      if (event.exclusionReason?.startsWith("Local usage: ")) {
+        current.localTokens += event.totalTokens;
+      } else if (event.exclusionReason?.startsWith("Unknown model: ")) {
+        current.unknownTokens += event.totalTokens;
       }
     } else {
-      current.unestimatedTokens += detail.tokens;
+      current.unestimatedTokens += event.totalTokens;
     }
 
     usage.set(key, current);
@@ -365,6 +365,7 @@ function buildModelUsage(coverageDetails: CoverageDetailAggregate[]): ModelUsage
       supportedTokens: item.supportedTokens,
       excludedTokens: item.excludedTokens,
       unestimatedTokens: item.unestimatedTokens,
+      apiCostUsd: item.apiCostUsd,
       ...buildModelStatus(item)
     }))
     .sort((left, right) => {
@@ -499,7 +500,7 @@ function buildOverviewFromSnapshot(
     },
     coverageSummary,
     weeklyGrowth: buildWeeklyGrowth(snapshot, timeZone, options.nowTs),
-    modelUsage: buildModelUsage(snapshot.coverageDetails),
+    modelUsage: buildModelUsage(snapshot.events),
     coverageDetails: snapshot.coverageDetails,
     exclusions: snapshot.exclusions,
     lastIndexedAt: snapshot.lastIndexedAt,

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as aggregation from "../src/aggregation.js";
 import * as discovery from "../src/discovery.js";
+import { calculateEventCostUsd, getPricingEntry } from "../src/pricing.js";
 import { DashboardService } from "../src/service.js";
 import {
   captureHomeEnv,
@@ -10,7 +11,8 @@ import {
   restoreHomeEnv,
   setUserHomeEnv,
   writeJsonFile,
-  writeJsonlFile
+  writeJsonlFile,
+  writeTuiLog
 } from "./helpers.js";
 import type { HomeEnvSnapshot } from "./helpers.js";
 
@@ -461,6 +463,24 @@ describe("DashboardService", () => {
         model: "gpt-5.3-codex"
       })
     );
+    writeJsonlFile(codex.dir, "sessions/2026/03/09/session-openai-fallback.jsonl", [
+      {
+        timestamp: "2026-03-09T10:06:00.000Z",
+        type: "session_meta",
+        payload: {
+          id: "session-openai-fallback",
+          model_provider: "openai",
+          source: "exec"
+        }
+      },
+      {
+        timestamp: "2026-03-09T10:06:00.000Z",
+        type: "turn_context",
+        payload: {
+          model: "gpt-5.3-codex"
+        }
+      }
+    ]);
     writeJsonlFile(
       codex.dir,
       "sessions/2026/03/09/session-claude.jsonl",
@@ -515,9 +535,14 @@ describe("DashboardService", () => {
         model: "<synthetic>"
       })
     );
+    writeTuiLog(codex.dir, "2026-03-09T10:06:01.000Z INFO thread_id=session-openai-fallback total_usage_tokens=50");
 
     const service = createImmediateDashboardService();
     const overview = service.getOverview("UTC");
+    const openAiPricing = getPricingEntry("openai", "gpt-5.3-codex");
+    expect(openAiPricing).not.toBeNull();
+    const expectedOpenAiCost =
+      calculateEventCostUsd(openAiPricing!, 100, 10, 20) + calculateEventCostUsd(openAiPricing!, 60, 10, 20);
 
     expect(overview.coverageDetails).toEqual(
       expect.arrayContaining([
@@ -534,6 +559,14 @@ describe("DashboardService", () => {
           source: "CLI",
           classification: "supported",
           tokens: 80
+        }),
+        expect.objectContaining({
+          provider: "openai",
+          model: "gpt-5.3-codex",
+          source: "CLI",
+          classification: "token_only",
+          tokens: 50,
+          reason: "Token totals are available, but token splits needed for pricing-weighted estimation are missing."
         }),
         expect.objectContaining({
           provider: "claude",
@@ -580,14 +613,18 @@ describe("DashboardService", () => {
         expect.objectContaining({
           provider: "openai",
           model: "gpt-5.3-codex",
-          totalTokens: 200,
-          supportedTokens: 200
+          totalTokens: 250,
+          supportedTokens: 200,
+          unestimatedTokens: 50,
+          status: "allowed",
+          statusNote: "includes fallback-only usage"
         }),
         expect.objectContaining({
           provider: "claude",
           model: "claude-sonnet-4",
           totalTokens: 60,
           supportedTokens: 60,
+          apiCostUsd: expect.any(Number),
           status: "allowed",
           statusNote: null
         }),
@@ -596,6 +633,7 @@ describe("DashboardService", () => {
           model: "qwen2.5-coder:7b",
           totalTokens: 70,
           supportedTokens: 70,
+          apiCostUsd: expect.any(Number),
           status: "allowed",
           statusNote: null
         }),
@@ -604,6 +642,7 @@ describe("DashboardService", () => {
           model: "qwen3.5:9b",
           totalTokens: 35,
           excludedTokens: 35,
+          apiCostUsd: 0,
           status: "unknown",
           statusNote: "pricing not available yet"
         }),
@@ -612,19 +651,27 @@ describe("DashboardService", () => {
           model: "qwen2.5-coder:7b",
           totalTokens: 45,
           excludedTokens: 45,
+          apiCostUsd: 0,
           status: "local",
-          statusNote: "local usage"
+          statusNote: "Ran on local hardware"
         }),
         expect.objectContaining({
           provider: "ollama",
           model: "qwen3.5:9b",
           totalTokens: 40,
           excludedTokens: 40,
+          apiCostUsd: 0,
           status: "local",
-          statusNote: "local usage · pricing not available yet"
+          statusNote: "Ran on local hardware"
         })
       ])
     );
+    expect(overview.modelUsage.find((item) => item.provider === "openai" && item.model === "gpt-5.3-codex")?.apiCostUsd).toBeCloseTo(
+      expectedOpenAiCost,
+      12
+    );
+    expect(overview.modelUsage.find((item) => item.provider === "anthropic" && item.model === "qwen3.5:9b")?.apiCostUsd).toBe(0);
+    expect(overview.modelUsage.find((item) => item.provider === "ollama" && item.model === "qwen2.5-coder:7b")?.apiCostUsd).toBe(0);
     expect(
       overview.modelUsage.some((item) => item.provider === "anthropic" && item.model === "<synthetic>")
     ).toBe(false);
@@ -678,6 +725,9 @@ describe("DashboardService", () => {
 
     const service = createImmediateDashboardService();
     const overview = service.getOverview("UTC");
+    const claudePricing = getPricingEntry("anthropic", "claude-sonnet-4");
+    expect(claudePricing).not.toBeNull();
+    const expectedClaudeCost = calculateEventCostUsd(claudePricing!, 80, 20, 30);
 
     expect(overview.coverageSummary).toEqual({
       sessions: 3,
@@ -710,17 +760,23 @@ describe("DashboardService", () => {
           provider: "anthropic",
           model: "claude-sonnet-4",
           totalTokens: 110,
-          supportedTokens: 110
+          supportedTokens: 110,
+          apiCostUsd: expect.any(Number)
         }),
         expect.objectContaining({
           provider: "anthropic",
           model: "unknown",
           totalTokens: 60,
           excludedTokens: 60,
+          apiCostUsd: 0,
           status: "unknown",
           statusNote: "pricing not available yet"
         })
       ])
+    );
+    expect(overview.modelUsage.find((item) => item.provider === "anthropic" && item.model === "claude-sonnet-4")?.apiCostUsd).toBeCloseTo(
+      expectedClaudeCost,
+      12
     );
 
     codex.cleanup();

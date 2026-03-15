@@ -47,6 +47,7 @@ export interface ModelUsageEntry {
   supportedTokens: number;
   excludedTokens: number;
   unestimatedTokens: number;
+  apiCostUsd: number;
   status: ModelUsageStatus;
   statusNote: string | null;
 }

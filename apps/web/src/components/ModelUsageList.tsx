@@ -1,5 +1,5 @@
 import type { ModelUsageEntry } from "@agentic-insights/shared";
-import { formatNumber } from "../lib/format";
+import { formatNumber, formatUsdCost } from "../lib/format";
 
 interface ModelUsageListProps {
   items: ModelUsageEntry[];
@@ -37,7 +37,17 @@ function getAccentClass(item: ModelUsageEntry): string {
 }
 
 function formatBreakdown(item: ModelUsageEntry): string {
-  return item.statusNote ? `${formatNumber(item.totalTokens)} tokens · ${item.statusNote}` : `${formatNumber(item.totalTokens)} tokens`;
+  const parts = [`${formatNumber(item.totalTokens)} tokens`];
+
+  if (item.apiCostUsd > 0) {
+    parts.push(`${formatUsdCost(item.apiCostUsd)} raw API cost`);
+  }
+
+  if (item.statusNote) {
+    parts.push(item.statusNote);
+  }
+
+  return parts.join(" · ");
 }
 
 function MedalRank({ rank }: { rank: 1 | 2 | 3 }) {

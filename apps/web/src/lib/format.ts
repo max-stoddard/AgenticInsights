@@ -22,6 +22,29 @@ export function formatCompactNumber(value: number): string {
   return new Intl.NumberFormat("en-GB").format(Math.round(value));
 }
 
+export function formatUsdCost(value: number): string {
+  const absolute = Math.abs(value);
+
+  if (absolute >= 1) {
+    return `$${value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  }
+
+  if (absolute >= 0.01) {
+    return `$${value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
+    })}`;
+  }
+
+  return `$${value.toLocaleString("en-US", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 6
+  })}`;
+}
+
 export function formatScaledLitres(value: number): string {
   const absolute = Math.abs(value);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCompactNumber, formatScaledLitres } from "../src/lib/format";
+import { formatCompactNumber, formatScaledLitres, formatUsdCost } from "../src/lib/format";
 
 describe("formatCompactNumber", () => {
   it("formats small values without suffixes", () => {
@@ -22,5 +22,16 @@ describe("formatScaledLitres", () => {
     expect(formatScaledLitres(515_000)).toBe("515 KL");
     expect(formatScaledLitres(1_000_000)).toBe("1.0 ML");
     expect(formatScaledLitres(67_500)).toBe("67.5 KL");
+  });
+});
+
+describe("formatUsdCost", () => {
+  it("keeps sub-dollar values precise enough to avoid rounding them down to zero", () => {
+    expect(formatUsdCost(0.0325)).toBe("$0.0325");
+    expect(formatUsdCost(0.004567)).toBe("$0.004567");
+  });
+
+  it("formats multi-dollar values as standard currency", () => {
+    expect(formatUsdCost(12.5)).toBe("$12.50");
   });
 });

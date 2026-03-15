@@ -82,6 +82,7 @@ function createReadyOverviewResponse(options?: DashboardResponseOptions) {
         supportedTokens: 900,
         excludedTokens: 0,
         unestimatedTokens: 50,
+        apiCostUsd: 0.0325,
         status: "allowed",
         statusNote: "includes fallback-only usage"
       },
@@ -93,6 +94,7 @@ function createReadyOverviewResponse(options?: DashboardResponseOptions) {
         supportedTokens: 120,
         excludedTokens: 0,
         unestimatedTokens: 0,
+        apiCostUsd: 0.00456,
         status: "allowed",
         statusNote: null
       },
@@ -104,6 +106,7 @@ function createReadyOverviewResponse(options?: DashboardResponseOptions) {
         supportedTokens: 0,
         excludedTokens: 50,
         unestimatedTokens: 0,
+        apiCostUsd: 0,
         status: "unknown",
         statusNote: "pricing not available yet"
       },
@@ -115,8 +118,9 @@ function createReadyOverviewResponse(options?: DashboardResponseOptions) {
         supportedTokens: 0,
         excludedTokens: 40,
         unestimatedTokens: 0,
+        apiCostUsd: 0,
         status: "local",
-        statusNote: "local usage"
+        statusNote: "Ran on local hardware"
       }
     ],
     coverageDetails: [
@@ -466,8 +470,9 @@ describe("App", () => {
     expect(screen.getByText("+250 this week")).toBeInTheDocument();
     expect(screen.getByText("+3 this week").parentElement).toHaveClass("inline-flex");
     expect(screen.getByText("Included in estimate")).toBeInTheDocument();
-    expect(screen.getByText("Local usage")).toBeInTheDocument();
+    expect(screen.getByText("Ran on local hardware")).toBeInTheDocument();
     expect(screen.getByText("Pricing not available")).toBeInTheDocument();
+    expect(within(breakdownSection!).queryByText("Local usage")).not.toBeInTheDocument();
 
     expect(screen.getByText(/Prompt insights/i)).toBeInTheDocument();
     expect(screen.getByText(/Energy estimates/i)).toBeInTheDocument();
@@ -1092,6 +1097,8 @@ describe("App", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("47")).toBeInTheDocument();
     expect(screen.getByText("900")).toBeInTheDocument();
+    expect(screen.getByText("950 tokens · $0.0325 raw API cost · includes fallback-only usage")).toBeInTheDocument();
+    expect(screen.getByText("120 tokens · $0.00456 raw API cost")).toBeInTheDocument();
     expect(screen.getByLabelText("First place")).toBeInTheDocument();
     expect(screen.getByLabelText("Second place")).toBeInTheDocument();
     expect(screen.getByLabelText("Third place")).toBeInTheDocument();
@@ -1100,10 +1107,10 @@ describe("App", () => {
 
     expect(screen.getAllByText("openai / gpt-5.4")).toHaveLength(1);
     expect(screen.getByText("anthropic / claude-sonnet-4")).toBeInTheDocument();
-    expect(screen.getByText("950 tokens · includes fallback-only usage")).toBeInTheDocument();
+    expect(screen.getByText("950 tokens · $0.0325 raw API cost · includes fallback-only usage")).toBeInTheDocument();
     expect(screen.getByText("50 tokens · pricing not available yet")).toBeInTheDocument();
     expect(screen.getByText("ollama / qwen2.5-coder:7b")).toBeInTheDocument();
-    expect(screen.getByText("40 tokens · local usage")).toBeInTheDocument();
+    expect(screen.getByText("40 tokens · Ran on local hardware")).toBeInTheDocument();
     expect(screen.queryByLabelText("Fourth place")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Show fewer models/i })).toBeInTheDocument();
   });
